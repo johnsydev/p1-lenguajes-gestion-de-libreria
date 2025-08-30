@@ -1,4 +1,6 @@
 #include "menu.h"
+#include "datos.h"
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -12,7 +14,7 @@ bool menuLogin() {
     scanf("%s", contrasena);
     printf("\n\n");
 
-    if (strcmp(usuario, "admin") == 0 && strcmp(contrasena, "admin") == 0) {
+    if (verificarAdmin(usuario, contrasena)) {
         printf("Acceso concedido.\n\n");
         return true;
     }
