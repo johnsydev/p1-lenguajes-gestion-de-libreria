@@ -1,4 +1,5 @@
 #include "datos.h"
+#include "libro.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -95,3 +96,45 @@ char** separarTexto(char* texto, char delimitador, int cantidad) {
     strcpy(array[indiceArray], temp);
     return array;
 };
+
+
+/* GESTION DE LIBROS */
+
+struct Libro** cargarLibros(int* cant) {
+    int cantidadLineas;
+    char** librosTxt = leerArchivo("libros.txt", &cantidadLineas);
+    struct Libro** libros = malloc(cantidadLineas * sizeof(struct Libro*));
+    
+    if (librosTxt == NULL) {
+        printf("Error al leer el archivo.\n");
+        return NULL;
+    }
+    
+    for (int i = 0; i < cantidadLineas; i++) {
+        char** info = separarTexto(librosTxt[i], ';', 5);
+        struct Libro* libro = malloc(sizeof(struct Libro));
+        strcpy(libro->codigo, info[0]);
+        strcpy(libro->nombre, info[1]);
+        strcpy(libro->autor, info[2]);
+        libro->precio = atof(info[3]);
+        libro->cantidad = atoi(info[4]);
+        libros[i] = libro;
+
+        for (int j = 0; j < 5; j++) free(info[j]);
+        free(info);
+    }
+    *cant = cantidadLineas;
+    return libros;
+}
+
+/*
+bool registrarLibro(struct Libro** listaLibros, struct Libro* libro) {
+    nuevaLista = (struct Libro**)realloc(listaLibros, (cantidadLibros + 1) * sizeof(struct Libro*));
+    if (nuevaLista == NULL) {
+        return false;
+    }
+    listaLibros[cantidadLibros] = libro;
+    cantidadLibros++;
+    return true;
+}
+*/

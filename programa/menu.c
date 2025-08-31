@@ -1,8 +1,37 @@
 #include "menu.h"
 #include "datos.h"
+#include "libro.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+
+void menuRegistrarLibro() {
+    struct Libro** libros = cargarLibros();
+    char codigo[20];
+    char nombre[100];
+    char autor[50];
+    float precio;
+    int cantidad;
+    printf("------- Agregar Libro -------\n\n");
+    printf("Código del libro:");
+    scanf("%s", codigo);
+    printf("Nombre del libro: ");
+    scanf("%s", nombre);
+    printf("\nAutor: ");
+    scanf("%s", autor);
+    printf("\nPrecio: ");
+    scanf("%f", &precio);
+    printf("\nCantidad disponible: ");
+    scanf("%d", &cantidad);
+    printf("\n\n");
+
+    //struct Libro nuevoLibro = {codigo, nombre, autor, precio, cantidad};
+    if (true) {//registrarLibro(&nuevoLibro)) {
+        printf("Libro agregado correctamente.\n\n");
+        return;
+    }
+    printf("Error al agregar el libro.\n\n");
+}
 
 bool menuLogin() {
     char usuario[30];
@@ -39,6 +68,7 @@ void menuAdministrativo() {
     switch (opcion)
     {
         case 1:
+            menuRegistrarLibro();
             break;
         case 2:
             break;
@@ -58,6 +88,26 @@ void menuAdministrativo() {
     menuAdministrativo();
 }
 
+
+void menuMostrarCatalogo() {
+    int cant;
+    struct Libro** libros = cargarLibros(&cant);
+    printf("------- Catalogo -------\n\n");
+    if (cant == 0) {
+        printf("No hay libros disponibles.\n\n");
+        return;
+    }
+    for (int i = 0; i < cant; i++) {
+        printf("------------------\n");
+        printf("Codigo: %s\n", libros[i]->codigo);
+        printf("Nombre: %s\n", libros[i]->nombre);
+        printf("Autor: %s\n", libros[i]->autor);
+        printf("Precio: %.2f\n", libros[i]->precio);
+        printf("Cantidad: %d\n", libros[i]->cantidad);
+        printf("------------------\n\n");
+    }
+}
+
 void menuOpcionesPrincipales() {
     printf("------- Opciones Principales -------\n\n");
     printf("1. Consulta de catálogo\n");
@@ -72,6 +122,7 @@ void menuOpcionesPrincipales() {
     switch (opcion)
     {
         case 1:
+            menuMostrarCatalogo();
             break;
         case 2:
             break;

@@ -10,4 +10,8 @@ void menuPrincipal();
 void menuAdministrativo();
 void menuOpcionesPrincipales(); //sin autenticación
 
+void menuRegistrarLibro();
+
+void menuMostrarCatalogo();
+
 #endif
