@@ -13,5 +13,8 @@ void menuOpcionesPrincipales(); //sin autenticación
 void menuRegistrarLibro();
 
 void menuMostrarCatalogo();
+void menuManejoInventario();
+
+void copiarString();
 
 #endif

@@ -5,32 +5,67 @@
 #include <string.h>
 #include <stdbool.h>
 
+#define input(texto) fflush(stdin); fgets(texto, sizeof(texto), stdin); texto[strcspn(texto, "\n")] = 0;
+
+// Auxiliar
+void copiarString(char destino[], char origen[]) {
+    int i = 0;
+    while (origen[i] != '\0') {
+        destino[i] = origen[i];
+        i++;
+    }
+    destino[i] = '\0';
+}
+
 void menuRegistrarLibro() {
-    struct Libro** libros = cargarLibros();
+    int cant;
+    struct Libro** libros = cargarLibros(&cant);
     char codigo[20];
     char nombre[100];
     char autor[50];
     float precio;
     int cantidad;
+
     printf("------- Agregar Libro -------\n\n");
-    printf("Código del libro:");
-    scanf("%s", codigo);
-    printf("Nombre del libro: ");
-    scanf("%s", nombre);
+    printf("\nCódigo del libro:");
+    input(codigo);
+    printf("\nNombre del libro: ");
+    input(nombre);
     printf("\nAutor: ");
-    scanf("%s", autor);
+    input(autor);
     printf("\nPrecio: ");
     scanf("%f", &precio);
     printf("\nCantidad disponible: ");
     scanf("%d", &cantidad);
     printf("\n\n");
 
-    //struct Libro nuevoLibro = {codigo, nombre, autor, precio, cantidad};
-    if (true) {//registrarLibro(&nuevoLibro)) {
+    struct Libro nuevoLibro;
+    copiarString(nuevoLibro.codigo, codigo);
+    copiarString(nuevoLibro.nombre, nombre);
+    copiarString(nuevoLibro.autor, autor);
+    nuevoLibro.precio = precio;
+    nuevoLibro.cantidad = cantidad;
+    if (registrarLibro(libros, &nuevoLibro, cant)) {
         printf("Libro agregado correctamente.\n\n");
         return;
     }
-    printf("Error al agregar el libro.\n\n");
+}
+
+void menuManejoInventario() {
+    printf("------- Manejo de inventario -------\n\n");
+    printf("Este menu permite modificar la cantidad de libros disponibles, cargando la informacion desde un archivo.\n\n");
+    printf("Escriba el nombre de archivo o presione [Enter] para volver atras.\n\n> ");
+
+    char archivo[100];
+    input(archivo);
+    if (archivo[0] == '\0') {
+        return;
+    }
+
+    int cant;
+    struct Libro** libros = cargarLibros(&cant);
+    modificarInventario(libros, &cant, archivo);
+    return;
 }
 
 bool menuLogin() {
@@ -71,6 +106,7 @@ void menuAdministrativo() {
             menuRegistrarLibro();
             break;
         case 2:
+            menuManejoInventario();
             break;
         case 3:
             break;

@@ -104,7 +104,7 @@ struct Libro** cargarLibros(int* cant) {
     int cantidadLineas;
     char** librosTxt = leerArchivo("libros.txt", &cantidadLineas);
     struct Libro** libros = malloc(cantidadLineas * sizeof(struct Libro*));
-    
+
     if (librosTxt == NULL) {
         printf("Error al leer el archivo.\n");
         return NULL;
@@ -127,14 +127,34 @@ struct Libro** cargarLibros(int* cant) {
     return libros;
 }
 
-/*
-bool registrarLibro(struct Libro** listaLibros, struct Libro* libro) {
-    nuevaLista = (struct Libro**)realloc(listaLibros, (cantidadLibros + 1) * sizeof(struct Libro*));
-    if (nuevaLista == NULL) {
+
+bool registrarLibro(struct Libro** listaLibros, struct Libro* libro, int cantidadLibros) {
+    for (int i = 0; i < cantidadLibros; i++) {
+        if (strcmp(listaLibros[i]->codigo, libro->codigo) == 0) {
+            printf("Error: Ya existe un libro con ese codigo.\n\n");
+            return false;
+        }
+    }
+
+    listaLibros = (struct Libro**)realloc(listaLibros, (cantidadLibros + 1) * sizeof(struct Libro*));
+    if (listaLibros == NULL) {
         return false;
     }
     listaLibros[cantidadLibros] = libro;
     cantidadLibros++;
+
+    FILE *archivo = fopen("libros.txt", "a");
+    if (cantidadLibros == 1) {
+        fprintf(archivo, "%s;%s;%s;%.2f;%d", libro->codigo, libro->nombre, libro->autor, libro->precio, libro->cantidad);
+    }
+    fprintf(archivo, "\n%s;%s;%s;%.2f;%d", libro->codigo, libro->nombre, libro->autor, libro->precio, libro->cantidad);
+    fclose(archivo);
+
     return true;
 }
-*/
+
+bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archivo) {
+    int* cantidadLineas;
+    char** contenido = leerArchivo(archivo, cantidadLibros);
+    return true;
+}
