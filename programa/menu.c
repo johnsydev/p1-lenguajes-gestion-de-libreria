@@ -1,21 +1,12 @@
 #include "menu.h"
 #include "datos.h"
+#include "auxiliares.h"
 #include "libro.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
 #define input(texto) fflush(stdin); fgets(texto, sizeof(texto), stdin); texto[strcspn(texto, "\n")] = 0;
-
-// Auxiliar
-void copiarString(char destino[], char origen[]) {
-    int i = 0;
-    while (origen[i] != '\0') {
-        destino[i] = origen[i];
-        i++;
-    }
-    destino[i] = '\0';
-}
 
 void menuRegistrarLibro() {
     int cant;

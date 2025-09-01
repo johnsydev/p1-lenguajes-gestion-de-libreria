@@ -11,6 +11,7 @@ char** separarTexto(char*, char, int);
 
 bool registrarLibro(struct Libro**, struct Libro*, int);
 struct Libro** cargarLibros();
+void actualizarTodosLibros(struct Libro**, int*);
 
 bool modificarInventario(struct Libro**, int*, char*);
 #endif

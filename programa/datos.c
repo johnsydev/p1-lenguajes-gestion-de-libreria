@@ -1,5 +1,6 @@
 #include "datos.h"
 #include "libro.h"
+#include "auxiliares.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,7 +22,8 @@ char** leerArchivo(char* nombreArchivo, int* cantidadLineas) {
     FILE *archivo = fopen(nombreArchivo, "r");
 
     if (archivo == NULL) {
-        printf("Error al abrir el archivo.\n");
+        *cantidadLineas = 0;
+        printf("Error al abrir el archivo.\n\n");
         return NULL;
     }
 
@@ -30,7 +32,7 @@ char** leerArchivo(char* nombreArchivo, int* cantidadLineas) {
         cantidad++;
         lineas = (char**)realloc(lineas, cantidad * sizeof(char*));
         lineas[cantidad-1] = (char*)malloc(strlen(linea) + 1);
-        strcpy(lineas[cantidad-1], linea);
+        copiarString(lineas[cantidad-1], linea);
     }
 
     fclose(archivo);
@@ -52,7 +54,7 @@ bool verificarAdmin(char* usuario, char* contrasena) {
         char** info = separarTexto(credenciales[i], ';', 2);
         char* infoUsuario = info[0];
         char* infoContrasena = info[1];
-        if (strcmp(infoUsuario, usuario) == 0 && strcmp(infoContrasena, contrasena) == 0) {
+        if (compararString(infoUsuario, usuario) == true && compararString(infoContrasena, contrasena) == true) {
             return true;
         }
     }
@@ -81,7 +83,7 @@ char** separarTexto(char* texto, char delimitador, int cantidad) {
             indiceTexto++;
             temp[indiceTemp] = '\0';
             array[indiceArray] = (char*)malloc(strlen(temp) + 1);
-            strcpy(array[indiceArray], temp);
+            copiarString(array[indiceArray], temp);
             indiceArray++;
             temp[0] = '\0';
             indiceTemp = 0;
@@ -93,7 +95,7 @@ char** separarTexto(char* texto, char delimitador, int cantidad) {
     }
     temp[indiceTemp] = '\0';
     array[indiceArray] = (char*)malloc(strlen(temp) + 1);
-    strcpy(array[indiceArray], temp);
+    copiarString(array[indiceArray], temp);
     return array;
 };
 
@@ -113,9 +115,9 @@ struct Libro** cargarLibros(int* cant) {
     for (int i = 0; i < cantidadLineas; i++) {
         char** info = separarTexto(librosTxt[i], ';', 5);
         struct Libro* libro = malloc(sizeof(struct Libro));
-        strcpy(libro->codigo, info[0]);
-        strcpy(libro->nombre, info[1]);
-        strcpy(libro->autor, info[2]);
+        copiarString(libro->codigo, info[0]);
+        copiarString(libro->nombre, info[1]);
+        copiarString(libro->autor, info[2]);
         libro->precio = atof(info[3]);
         libro->cantidad = atoi(info[4]);
         libros[i] = libro;
@@ -153,8 +155,44 @@ bool registrarLibro(struct Libro** listaLibros, struct Libro* libro, int cantida
     return true;
 }
 
+void actualizarTodosLibros(struct Libro** libros, int* cantidadLibros) {
+    FILE *limpiar = fopen("libros.txt", "w");
+    fclose(limpiar);
+
+    FILE *archivo = fopen("libros.txt", "a");
+
+    for (int i = 0; i < *cantidadLibros; i++)
+    {
+        if (i == 0) {
+            fprintf(archivo, "%s;%s;%s;%.2f;%d", libros[i]->codigo, libros[i]->nombre, libros[i]->autor, libros[i]->precio, libros[i]->cantidad);
+        }
+        else {
+            fprintf(archivo, "\n%s;%s;%s;%.2f;%d", libros[i]->codigo, libros[i]->nombre, libros[i]->autor, libros[i]->precio, libros[i]->cantidad);
+        }
+    }  
+    fclose(archivo);
+}
+
 bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archivo) {
-    int* cantidadLineas;
-    char** contenido = leerArchivo(archivo, cantidadLibros);
+    int cantidadLineas;
+    char** contenido = leerArchivo(archivo, &cantidadLineas);
+    if (contenido == NULL) return false;
+
+    for (int i = 0; i < cantidadLineas; i++) {
+        char** info = separarTexto(contenido[i], ';', 2);
+        for (int j = 0; j < *cantidadLibros; j++) {
+            if (compararString(libros[j]->codigo, info[0]) == true) {
+                int count = libros[j]->cantidad + atoi(info[1]);
+                if (count > 0) {
+                    libros[j]->cantidad = count;
+                }
+                else {
+                    printf("Linea %d no procesada, el stock quedaria negativo.\n", i+1);
+                }
+            }
+        }
+    }
+    printf("\n");
+    actualizarTodosLibros(libros, cantidadLibros);
     return true;
 }
