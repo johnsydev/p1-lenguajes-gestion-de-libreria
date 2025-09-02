@@ -2,6 +2,7 @@
 #include "datos.h"
 #include "auxiliares.h"
 #include "libro.h"
+#include "cliente.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -39,6 +40,44 @@ void menuRegistrarLibro() {
     if (registrarLibro(libros, &nuevoLibro, cant)) {
         printf("Libro agregado correctamente.\n\n");
         return;
+    }
+}
+void menuRegistrarCliente() {
+    int cant;
+    struct Cliente** clientes = cargarClientes(&cant);
+    char cedula[TAM_CEDULA];
+    char nombre[TAM_NOMBRE];
+    char telefono[TAM_TELEFONO];
+
+    printf("------- Registrar Cliente -------\n\n");
+    printf("Cédula: ");
+    input(cedula);
+    if (strlen(cedula) == 0) { 
+        printf("Cédula no puede estar vacía.\n\n"); 
+        return; 
+    }
+
+    printf("Nombre: ");
+    input(nombre);
+    if (strlen(nombre) == 0) { 
+        printf("Nombre no puede estar vacío.\n\n"); 
+        return; 
+    }
+
+    printf("Teléfono: ");
+    input(telefono);
+    if (!validarTelefono(telefono)) { 
+        printf("Teléfono inválido. Debe tener al menos 7 dígitos y solo números.\n\n"); 
+        return; 
+    }
+
+    struct Cliente nuevoCliente;
+    copiarString(nuevoCliente.cedula, cedula);
+    copiarString(nuevoCliente.nombre, nombre);
+    copiarString(nuevoCliente.telefono, telefono);
+
+    if (registrarCliente(clientes, &nuevoCliente, cant)) {
+        printf("Cliente registrado correctamente.\n\n");
     }
 }
 
@@ -100,6 +139,7 @@ void menuAdministrativo() {
             menuManejoInventario();
             break;
         case 3:
+            menuRegistrarCliente();
             break;
         case 4:
             break;

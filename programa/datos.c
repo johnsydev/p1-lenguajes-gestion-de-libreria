@@ -1,3 +1,83 @@
+#include "cliente.h"
+// CLIENTES
+struct Cliente** cargarClientes(int* cant) {
+    int cantidadLineas;
+    char** clientesTxt = leerArchivo(CLIENTES_TXT, &cantidadLineas);
+    struct Cliente** clientes = malloc(cantidadLineas * sizeof(struct Cliente*));
+    if (clientesTxt == NULL) {
+        *cant = 0;
+        return NULL;
+    }
+    for (int i = 0; i < cantidadLineas; i++) {
+        char** info = separarTexto(clientesTxt[i], ';', 3);
+        struct Cliente* cliente = malloc(sizeof(struct Cliente));
+        copiarString(cliente->cedula, info[0]);
+        copiarString(cliente->nombre, info[1]);
+        copiarString(cliente->telefono, info[2]);
+        clientes[i] = cliente;
+        for (int j = 0; j < 3; j++) free(info[j]);
+        free(info);
+    }
+    *cant = cantidadLineas;
+    return clientes;
+}
+
+int existeCedula(struct Cliente** clientes, int cantidad, char* cedula) {
+    for (int i = 0; i < cantidad; i++) {
+        if (compararString(clientes[i]->cedula, cedula)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int validarTelefono(char* telefono) {
+    int len = strlen(telefono);
+    if (len < 7) return 0;
+    for (int i = 0; i < len; i++) {
+        if (telefono[i] < '0' || telefono[i] > '9') {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+bool registrarCliente(struct Cliente** listaClientes, struct Cliente* cliente, int cantidadClientes) {
+    for (int i = 0; i < cantidadClientes; i++) {
+        if (compararString(listaClientes[i]->cedula, cliente->cedula)) {
+            printf("Error: Ya existe un cliente con esa cédula.\n\n");
+            return false;
+        }
+    }
+
+    listaClientes = (struct Cliente**)realloc(listaClientes, (cantidadClientes + 1) * sizeof(struct Cliente*));
+    if (listaClientes == NULL) {
+        return false;
+    }
+    listaClientes[cantidadClientes] = cliente;
+    cantidadClientes++;
+
+    FILE *archivo = fopen(CLIENTES_TXT, "a");
+    if (cantidadClientes == 1) {
+        fprintf(archivo, "%s;%s;%s", cliente->cedula, cliente->nombre, cliente->telefono);
+    } else {
+        fprintf(archivo, "\n%s;%s;%s", cliente->cedula, cliente->nombre, cliente->telefono);
+    }
+    fclose(archivo);
+    return true;
+}
+
+void actualizarTodosClientes(struct Cliente** clientes, int* cantidadClientes) {
+    FILE *archivo = fopen(CLIENTES_TXT, "w");
+    for (int i = 0; i < *cantidadClientes; i++) {
+        if (i == 0) {
+            fprintf(archivo, "%s;%s;%s", clientes[i]->cedula, clientes[i]->nombre, clientes[i]->telefono);
+        } else {
+            fprintf(archivo, "\n%s;%s;%s", clientes[i]->cedula, clientes[i]->nombre, clientes[i]->telefono);
+        }
+    }
+    fclose(archivo);
+}
 #include "datos.h"
 #include "libro.h"
 #include "auxiliares.h"
