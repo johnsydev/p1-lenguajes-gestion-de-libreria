@@ -9,6 +9,7 @@
 
 #define CLIENTES_TXT "clientes.txt"
 #define PEDIDOS_TXT "pedidos.txt"
+#define DETALLES_TXT "detalles.txt"
 
 char** leerArchivo(char*, int*);
 bool verificarAdmin(char*, char*);
@@ -37,4 +38,6 @@ bool generarPedido(struct Pedido*, struct Libro**, int*);
 char* generarIdPedido();
 void mostrarDetallePedido(struct DetallePedido**, int);
 void mostrarPedidoCompleto(struct Pedido*);
+struct Pedido** cargarPedidos(int*);
+struct DetallePedido** cargarDetallesPorPedido(char*, int*);
 #endif

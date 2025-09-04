@@ -412,24 +412,32 @@ bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros
     // Actualizar archivo de libros
     actualizarTodosLibros(libros, cantLibros);
     
-    // Guardar pedido en archivo
-    FILE *archivo = fopen(PEDIDOS_TXT, "a");
-    if (archivo == NULL) {
+    // Guardar pedido (encabezado) en archivo de pedidos
+    FILE *archivoPedidos = fopen(PEDIDOS_TXT, "a");
+    if (archivoPedidos == NULL) {
         printf("Error al guardar el pedido.\n");
         return false;
     }
     
-    fprintf(archivo, "PEDIDO:%s;%s;%s;%s;%.2f;%.2f;%.2f\n", 
+    fprintf(archivoPedidos, "%s;%s;%s;%s;%.2f;%.2f;%.2f\n", 
             pedido->idPedido, pedido->cedulaCliente, pedido->nombreCliente, 
             pedido->fecha, pedido->subtotalPedido, pedido->impuesto, pedido->totalPedido);
+    fclose(archivoPedidos);
+    
+    // Guardar detalles en archivo separado
+    FILE *archivoDetalles = fopen(DETALLES_TXT, "a");
+    if (archivoDetalles == NULL) {
+        printf("Error al guardar los detalles del pedido.\n");
+        return false;
+    }
     
     for (int i = 0; i < pedido->cantidadDetalles; i++) {
-        fprintf(archivo, "DETALLE:%s;%s;%s;%.2f;%d;%.2f\n",
+        fprintf(archivoDetalles, "%s;%s;%s;%.2f;%d;%.2f\n",
                 pedido->idPedido, pedido->detalles[i]->codigoLibro, pedido->detalles[i]->nombreLibro,
                 pedido->detalles[i]->precio, pedido->detalles[i]->cantidad, pedido->detalles[i]->subtotal);
     }
+    fclose(archivoDetalles);
     
-    fclose(archivo);
     return true;
 }
 
@@ -451,4 +459,77 @@ void mostrarPedidoCompleto(struct Pedido* pedido) {
     printf("Impuesto (13%%):  $%.2f\n", pedido->impuesto);
     printf("TOTAL:           $%.2f\n", pedido->totalPedido);
     printf("===============================================\n\n");
+}
+
+struct Pedido** cargarPedidos(int* cant) {
+    int cantidadLineas;
+    char** pedidosTxt = leerArchivo(PEDIDOS_TXT, &cantidadLineas);
+    
+    if (pedidosTxt == NULL) {
+        *cant = 0;
+        return NULL;
+    }
+    
+    struct Pedido** pedidos = malloc(cantidadLineas * sizeof(struct Pedido*));
+    
+    for (int i = 0; i < cantidadLineas; i++) {
+        char** info = separarTexto(pedidosTxt[i], ';', 7);
+        struct Pedido* pedido = malloc(sizeof(struct Pedido));
+        
+        copiarString(pedido->idPedido, info[0]);
+        copiarString(pedido->cedulaCliente, info[1]);
+        copiarString(pedido->nombreCliente, info[2]);
+        copiarString(pedido->fecha, info[3]);
+        pedido->subtotalPedido = atof(info[4]);
+        pedido->impuesto = atof(info[5]);
+        pedido->totalPedido = atof(info[6]);
+        
+        // Cargar detalles del pedido
+        pedido->detalles = cargarDetallesPorPedido(pedido->idPedido, &pedido->cantidadDetalles);
+        
+        pedidos[i] = pedido;
+        
+        for (int j = 0; j < 7; j++) free(info[j]);
+        free(info);
+    }
+    
+    *cant = cantidadLineas;
+    return pedidos;
+}
+
+struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
+    int cantidadLineas;
+    char** detallesTxt = leerArchivo(DETALLES_TXT, &cantidadLineas);
+    
+    if (detallesTxt == NULL) {
+        *cant = 0;
+        return NULL;
+    }
+    
+    struct DetallePedido** detalles = NULL;
+    int cantidadDetalles = 0;
+    
+    for (int i = 0; i < cantidadLineas; i++) {
+        char** info = separarTexto(detallesTxt[i], ';', 6);
+        
+        // Solo cargar detalles que pertenecen a este pedido
+        if (compararString(info[0], idPedido)) {
+            detalles = realloc(detalles, (cantidadDetalles + 1) * sizeof(struct DetallePedido*));
+            detalles[cantidadDetalles] = malloc(sizeof(struct DetallePedido));
+            
+            copiarString(detalles[cantidadDetalles]->codigoLibro, info[1]);
+            copiarString(detalles[cantidadDetalles]->nombreLibro, info[2]);
+            detalles[cantidadDetalles]->precio = atof(info[3]);
+            detalles[cantidadDetalles]->cantidad = atoi(info[4]);
+            detalles[cantidadDetalles]->subtotal = atof(info[5]);
+            
+            cantidadDetalles++;
+        }
+        
+        for (int j = 0; j < 6; j++) free(info[j]);
+        free(info);
+    }
+    
+    *cant = cantidadDetalles;
+    return detalles;
 }
