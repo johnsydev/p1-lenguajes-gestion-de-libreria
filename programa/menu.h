@@ -13,6 +13,7 @@ void menuOpcionesPrincipales(); //sin autenticación
 
 void menuRegistrarLibro();
 void menuRegistrarCliente();
+void menuCrearPedido();
 
 void menuMostrarCatalogo();
 void menuManejoInventario();

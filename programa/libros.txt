@@ -1,4 +1,4 @@
-A1;Libro1;Autor1;100.00;5
+A1;Libro1;Autor1;100.00;10
 A2;Libro2;Autor2;150.00;10
-A3;Libro3;Autor3;200.00;35
-C1;Test;AAA;3455.00;53
+A3;Libro3;Autor3;200.00;55
+C1;Test;AAA;3455.00;103

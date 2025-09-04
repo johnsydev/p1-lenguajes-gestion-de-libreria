@@ -1,4 +1,14 @@
 #include "cliente.h"
+#include "datos.h"
+#include "libro.h"
+#include "auxiliares.h"
+#include "pedido.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
+#include <time.h>
+
 // CLIENTES
 struct Cliente** cargarClientes(int* cant) {
     int cantidadLineas;
@@ -78,13 +88,6 @@ void actualizarTodosClientes(struct Cliente** clientes, int* cantidadClientes) {
     }
     fclose(archivo);
 }
-#include "datos.h"
-#include "libro.h"
-#include "auxiliares.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdbool.h>
 
 /*
     Nombre: leerArchivo
@@ -256,7 +259,9 @@ void actualizarTodosLibros(struct Libro** libros, int* cantidadLibros) {
 bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archivo) {
     int cantidadLineas;
     char** contenido = leerArchivo(archivo, &cantidadLineas);
-    if (contenido == NULL) return false;
+    if (contenido == NULL) {
+        return false;
+    }
 
     for (int i = 0; i < cantidadLineas; i++) {
         char** info = separarTexto(contenido[i], ';', 2);
@@ -275,4 +280,175 @@ bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archi
     printf("\n");
     actualizarTodosLibros(libros, cantidadLibros);
     return true;
+}
+
+// PEDIDOS
+struct Libro* buscarLibroPorCodigo(struct Libro** libros, int cantidad, char* codigo) {
+    for (int i = 0; i < cantidad; i++) {
+        if (compararString(libros[i]->codigo, codigo)) {
+            return libros[i];
+        }
+    }
+    return NULL;
+}
+
+struct Cliente* buscarClientePorCedula(struct Cliente** clientes, int cantidad, char* cedula) {
+    for (int i = 0; i < cantidad; i++) {
+        if (compararString(clientes[i]->cedula, cedula)) {
+            return clientes[i];
+        }
+    }
+    return NULL;
+}
+
+bool agregarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalles, char* codigoLibro, int cantidad, struct Libro** libros, int cantLibros) {
+    struct Libro* libro = buscarLibroPorCodigo(libros, cantLibros, codigoLibro);
+    if (libro == NULL) {
+        printf("Error: Libro no encontrado.\n\n");
+        return false;
+    }
+    
+    if (libro->cantidad < cantidad) {
+        printf("Error: Stock insuficiente. Disponible: %d\n\n", libro->cantidad);
+        return false;
+    }
+
+    // Verificar si el libro ya existe en el pedido
+    for (int i = 0; i < *cantidadDetalles; i++) {
+        if (compararString((*detalles)[i]->codigoLibro, codigoLibro)) {
+            if (libro->cantidad < ((*detalles)[i]->cantidad + cantidad)) {
+                printf("Error: Stock insuficiente. Disponible: %d, En pedido: %d\n\n", 
+                       libro->cantidad, (*detalles)[i]->cantidad);
+                return false;
+            }
+            (*detalles)[i]->cantidad += cantidad;
+            (*detalles)[i]->subtotal = (*detalles)[i]->cantidad * (*detalles)[i]->precio;
+            printf("Cantidad actualizada. Nueva cantidad: %d\n\n", (*detalles)[i]->cantidad);
+            return true;
+        }
+    }
+
+    // Agregar nuevo detalle
+    *detalles = realloc(*detalles, (*cantidadDetalles + 1) * sizeof(struct DetallePedido*));
+    (*detalles)[*cantidadDetalles] = malloc(sizeof(struct DetallePedido));
+    
+    copiarString((*detalles)[*cantidadDetalles]->codigoLibro, libro->codigo);
+    copiarString((*detalles)[*cantidadDetalles]->nombreLibro, libro->nombre);
+    (*detalles)[*cantidadDetalles]->precio = libro->precio;
+    (*detalles)[*cantidadDetalles]->cantidad = cantidad;
+    (*detalles)[*cantidadDetalles]->subtotal = cantidad * libro->precio;
+    
+    (*cantidadDetalles)++;
+    return true;
+}
+
+bool eliminarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalles, int numeroLinea) {
+    if (numeroLinea < 1 || numeroLinea > *cantidadDetalles) {
+        printf("Error: Número de línea inválido.\n\n");
+        return false;
+    }
+    
+    int indice = numeroLinea - 1;
+    free((*detalles)[indice]);
+    
+    for (int i = indice; i < *cantidadDetalles - 1; i++) {
+        (*detalles)[i] = (*detalles)[i + 1];
+    }
+    
+    (*cantidadDetalles)--;
+    *detalles = realloc(*detalles, (*cantidadDetalles) * sizeof(struct DetallePedido*));
+    
+    printf("Línea eliminada correctamente.\n\n");
+    return true;
+}
+
+void calcularTotalesPedido(struct DetallePedido** detalles, int cantidadDetalles, float* subtotal, float* impuesto, float* total) {
+    *subtotal = 0;
+    for (int i = 0; i < cantidadDetalles; i++) {
+        *subtotal += detalles[i]->subtotal;
+    }
+    *impuesto = *subtotal * IMPUESTO_VENTA;
+    *total = *subtotal + *impuesto;
+}
+
+char* generarIdPedido() {
+    static char id[TAM_ID_PEDIDO];
+    time_t t = time(NULL);
+    snprintf(id, TAM_ID_PEDIDO, "%ld", t % 100000);
+    return id;
+}
+
+void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles) {
+    if (cantidadDetalles == 0) {
+        printf("No hay líneas en el pedido.\n\n");
+        return;
+    }
+    
+    printf("=== DETALLE DEL PEDIDO ===\n");
+    printf("%-3s %-15s %-30s %-8s %-8s %-10s\n", "No.", "Código", "Nombre", "Precio", "Cant.", "Subtotal");
+    printf("------------------------------------------------------------------------\n");
+    
+    for (int i = 0; i < cantidadDetalles; i++) {
+        printf("%-3d %-15s %-30s $%-7.2f %-8d $%-9.2f\n", 
+               i + 1,
+               detalles[i]->codigoLibro,
+               detalles[i]->nombreLibro,
+               detalles[i]->precio,
+               detalles[i]->cantidad,
+               detalles[i]->subtotal);
+    }
+    printf("\n");
+}
+
+bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros) {
+    // Descontar del stock
+    for (int i = 0; i < pedido->cantidadDetalles; i++) {
+        struct Libro* libro = buscarLibroPorCodigo(libros, *cantLibros, pedido->detalles[i]->codigoLibro);
+        if (libro != NULL) {
+            libro->cantidad -= pedido->detalles[i]->cantidad;
+        }
+    }
+    
+    // Actualizar archivo de libros
+    actualizarTodosLibros(libros, cantLibros);
+    
+    // Guardar pedido en archivo
+    FILE *archivo = fopen(PEDIDOS_TXT, "a");
+    if (archivo == NULL) {
+        printf("Error al guardar el pedido.\n");
+        return false;
+    }
+    
+    fprintf(archivo, "PEDIDO:%s;%s;%s;%s;%.2f;%.2f;%.2f\n", 
+            pedido->idPedido, pedido->cedulaCliente, pedido->nombreCliente, 
+            pedido->fecha, pedido->subtotalPedido, pedido->impuesto, pedido->totalPedido);
+    
+    for (int i = 0; i < pedido->cantidadDetalles; i++) {
+        fprintf(archivo, "DETALLE:%s;%s;%s;%.2f;%d;%.2f\n",
+                pedido->idPedido, pedido->detalles[i]->codigoLibro, pedido->detalles[i]->nombreLibro,
+                pedido->detalles[i]->precio, pedido->detalles[i]->cantidad, pedido->detalles[i]->subtotal);
+    }
+    
+    fclose(archivo);
+    return true;
+}
+
+void mostrarPedidoCompleto(struct Pedido* pedido) {
+    printf("\n");
+    printf("===============================================\n");
+    printf("                COMERCIO\n");
+    printf("                COMERCIO\n");
+    printf("===============================================\n");
+    printf("Pedido No: %s\n", pedido->idPedido);
+    printf("Fecha: %s\n", pedido->fecha);
+    printf("Cliente: %s (%s)\n", pedido->nombreCliente, pedido->cedulaCliente);
+    printf("===============================================\n\n");
+    
+    mostrarDetallePedido(pedido->detalles, pedido->cantidadDetalles);
+    
+    printf("-----------------------------------------------\n");
+    printf("Subtotal:        $%.2f\n", pedido->subtotalPedido);
+    printf("Impuesto (13%%):  $%.2f\n", pedido->impuesto);
+    printf("TOTAL:           $%.2f\n", pedido->totalPedido);
+    printf("===============================================\n\n");
 }

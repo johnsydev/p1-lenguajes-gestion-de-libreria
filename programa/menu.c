@@ -3,9 +3,11 @@
 #include "auxiliares.h"
 #include "libro.h"
 #include "cliente.h"
+#include "pedido.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <time.h>
 
 #define input(texto) fflush(stdin); fgets(texto, sizeof(texto), stdin); texto[strcspn(texto, "\n")] = 0;
 
@@ -81,6 +83,129 @@ void menuRegistrarCliente() {
     }
 }
 
+void menuCrearPedido() {
+    int cantLibros, cantClientes;
+    struct Libro** libros = cargarLibros(&cantLibros);
+    struct Cliente** clientes = cargarClientes(&cantClientes);
+    
+    if (cantLibros == 0) {
+        printf("No hay libros disponibles para crear pedidos.\n\n");
+        return;
+    }
+    
+    struct Pedido pedido;
+    pedido.detalles = NULL;
+    pedido.cantidadDetalles = 0;
+    
+    printf("------- Crear Pedido -------\n\n");
+    
+    int opcion;
+    char codigo[20];
+    int cantidad;
+    int numeroLinea;
+    
+    do {
+        printf("=== GESTIÓN DE PEDIDO ===\n");
+        printf("1. Agregar línea\n");
+        printf("2. Eliminar línea\n");
+        printf("3. Mostrar pedido actual\n");
+        printf("4. Generar pedido\n");
+        printf("5. Salir sin guardar\n\n");
+        
+        printf("Seleccione una opción: ");
+        scanf("%d", &opcion);
+        printf("\n");
+        
+        switch (opcion) {
+            case 1:
+                printf("Código del libro: ");
+                input(codigo);
+                printf("Cantidad: ");
+                scanf("%d", &cantidad);
+                
+                if (cantidad <= 0) {
+                    printf("La cantidad debe ser mayor a 0.\n\n");
+                    break;
+                }
+                
+                if (agregarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, codigo, cantidad, libros, cantLibros)) {
+                    printf("Línea agregada correctamente.\n\n");
+                }
+                break;
+                
+            case 2:
+                if (pedido.cantidadDetalles == 0) {
+                    printf("No hay líneas para eliminar.\n\n");
+                    break;
+                }
+                
+                mostrarDetallePedido(pedido.detalles, pedido.cantidadDetalles);
+                printf("Número de línea a eliminar: ");
+                scanf("%d", &numeroLinea);
+                eliminarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, numeroLinea);
+                break;
+                
+            case 3:
+                mostrarDetallePedido(pedido.detalles, pedido.cantidadDetalles);
+                if (pedido.cantidadDetalles > 0) {
+                    float subtotal;
+                    float impuesto;
+                    float total;
+                    calcularTotalesPedido(pedido.detalles, pedido.cantidadDetalles, &subtotal, &impuesto, &total);
+                    printf("Subtotal: $%.2f\n", subtotal);
+                    printf("Impuesto (13%%): $%.2f\n", impuesto);
+                    printf("Total: $%.2f\n\n", total);
+                }
+                break;
+                
+            case 4:
+                if (pedido.cantidadDetalles == 0) {
+                    printf("No se puede generar un pedido vacío.\n\n");
+                    break;
+                }
+                
+                char cedula[15];
+                printf("Cédula del cliente: ");
+                input(cedula);
+                
+                struct Cliente* cliente = buscarClientePorCedula(clientes, cantClientes, cedula);
+                if (cliente == NULL) {
+                    printf("Cliente no encontrado.\n\n");
+                    break;
+                }
+                
+                // Llenar datos del pedido
+                copiarString(pedido.idPedido, generarIdPedido());
+                copiarString(pedido.cedulaCliente, cliente->cedula);
+                copiarString(pedido.nombreCliente, cliente->nombre);
+                
+                // Fecha actual
+                time_t t = time(NULL);
+                struct tm *fecha = localtime(&t);
+                snprintf(pedido.fecha, TAM_FECHA, "%02d/%02d/%04d", 
+                        fecha->tm_mday, fecha->tm_mon + 1, fecha->tm_year + 1900);
+                
+                calcularTotalesPedido(pedido.detalles, pedido.cantidadDetalles, 
+                                     &pedido.subtotalPedido, &pedido.impuesto, &pedido.totalPedido);
+                
+                if (generarPedido(&pedido, libros, &cantLibros)) {
+                    mostrarPedidoCompleto(&pedido);
+                    printf("Pedido generado exitosamente.\n\n");
+                    return;
+                }
+                break;
+                
+            case 5:
+                printf("Saliendo sin guardar...\n\n");
+                break;
+                
+            default:
+                printf("Opción no válida.\n\n");
+                break;
+        }
+    } while (opcion != 4 && opcion != 5);
+}
+
 void menuManejoInventario() {
     printf("------- Manejo de inventario -------\n\n");
     printf("Este menu permite modificar la cantidad de libros disponibles, cargando la informacion desde un archivo.\n\n");
@@ -142,6 +267,7 @@ void menuAdministrativo() {
             menuRegistrarCliente();
             break;
         case 4:
+            menuCrearPedido();
             break;
         case 5:
             break;
