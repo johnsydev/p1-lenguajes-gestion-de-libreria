@@ -55,7 +55,7 @@ int validarTelefono(char* telefono) {
 bool registrarCliente(struct Cliente** listaClientes, struct Cliente* cliente, int cantidadClientes) {
     for (int i = 0; i < cantidadClientes; i++) {
         if (compararString(listaClientes[i]->cedula, cliente->cedula)) {
-            printf("Error: Ya existe un cliente con esa cédula.\n\n");
+            printf("Error: Ya existe un cliente con esa cedula.\n\n");
             return false;
         }
     }
@@ -344,7 +344,7 @@ bool agregarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalle
 
 bool eliminarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalles, int numeroLinea) {
     if (numeroLinea < 1 || numeroLinea > *cantidadDetalles) {
-        printf("Error: Número de línea inválido.\n\n");
+        printf("Error: Numero de linea invalido.\n\n");
         return false;
     }
     
@@ -358,7 +358,7 @@ bool eliminarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetall
     (*cantidadDetalles)--;
     *detalles = realloc(*detalles, (*cantidadDetalles) * sizeof(struct DetallePedido*));
     
-    printf("Línea eliminada correctamente.\n\n");
+    printf("Linea eliminada correctamente.\n\n");
     return true;
 }
 
@@ -380,12 +380,12 @@ char* generarIdPedido() {
 
 void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles) {
     if (cantidadDetalles == 0) {
-        printf("No hay líneas en el pedido.\n\n");
+        printf("No hay lineas en el pedido.\n\n");
         return;
     }
     
     printf("=== DETALLE DEL PEDIDO ===\n");
-    printf("%-3s %-15s %-30s %-8s %-8s %-10s\n", "No.", "Código", "Nombre", "Precio", "Cant.", "Subtotal");
+    printf("%-3s %-15s %-30s %-8s %-8s %-10s\n", "No.", "Codigo", "Nombre", "Precio", "Cant.", "Subtotal");
     printf("------------------------------------------------------------------------\n");
     
     for (int i = 0; i < cantidadDetalles; i++) {
@@ -534,17 +534,15 @@ struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
     return detalles;
 }
 
-/* =========================
-   ESTADISTICAS
-   ========================= */
+// Estadisticas
 typedef struct {
-    char clave[50];        // año / cédula / código libro
-    char descripcion[60];  // nombre cliente / título libro (si aplica)
-    int  cantidad;         // pedidos o unidades
-    double montoTotal;     // acumulado
+    char clave[50];        
+    char descripcion[60];  
+    int  cantidad;         
+    double montoTotal;     
 } Registro;
 
-/* ---- Auxiliares ---- */
+// Auxiliares
 static int buscarRegistro(Registro* arr, int n, const char* clave) {
     for (int i = 0; i < n; i++) {
         if (compararString(arr[i].clave, (char*)clave)) {
@@ -554,7 +552,7 @@ static int buscarRegistro(Registro* arr, int n, const char* clave) {
     return -1;
 }
 
-// FECHA EN FORMATO "DD/MM/YYYY": tomar los últimos 4
+// Toma los últimos 4 caracteres de la fecha como año
 static void anioDeFecha(const char* fecha, char anio[5]) {
     int len = (int)strlen(fecha);
     if (len >= 4) {
@@ -580,7 +578,7 @@ static void ordenarPorCantidadDesc(Registro* arr, int n) {
     }
 }
 
-/* ---- 1) Total de ventas y monto por año ---- */
+// Total de ventas y su monto por anio
 void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
     double montoTotal = 0.0;
     Registro* porAnio = NULL;
@@ -622,7 +620,7 @@ void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
     free(porAnio);
 }
 
-/* ---- 2) Clientes con más pedidos (burbuja) ---- */
+// Clientes con mas pedidos
 void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int topN) {
     Registro* porCliente = NULL;
     int cantClientes = 0;
@@ -633,7 +631,7 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
             porCliente = (Registro*)realloc(porCliente, (cantClientes + 1) * sizeof(Registro));
             copiarString(porCliente[cantClientes].clave, pedidos[i]->cedulaCliente);
             copiarString(porCliente[cantClientes].descripcion, pedidos[i]->nombreCliente);
-            porCliente[cantClientes].cantidad = 1;                  // # pedidos
+            porCliente[cantClientes].cantidad = 1;              
             porCliente[cantClientes].montoTotal = pedidos[i]->totalPedido;
             cantClientes++;
         } else {
@@ -645,7 +643,7 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
     ordenarPorCantidadDesc(porCliente, cantClientes);
 
     printf("=== CLIENTES CON MÁS PEDIDOS (TOP %d) ===\n", topN);
-    printf("%-4s %-15s %-25s %-8s %-12s\n", "No.", "Cédula", "Nombre", "Pedidos", "Monto");
+    printf("%-4s %-15s %-25s %-8s %-12s\n", "No.", "Cedula", "Nombre", "Pedidos", "Monto");
     printf("------------------------------------------------------------------\n");
     for (int i = 0; i < cantClientes && i < topN; i++) {
         printf("%-4d %-15s %-25s %-8d $%-11.2f\n",
@@ -660,7 +658,7 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
     free(porCliente);
 }
 
-/* ---- 3) Libros más vendidos (filtro por año opcional) ---- */
+//Libros mas vendidos
 void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const char* anio, int topN) {
     int usarFiltro = (anio != NULL && anio[0] != '\0');
 
@@ -682,8 +680,8 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
                 porLibro = (Registro*)realloc(porLibro, (cantLibros + 1) * sizeof(Registro));
                 copiarString(porLibro[cantLibros].clave, d->codigoLibro);
                 copiarString(porLibro[cantLibros].descripcion, d->nombreLibro);
-                porLibro[cantLibros].cantidad = d->cantidad;     // unidades
-                porLibro[cantLibros].montoTotal = d->subtotal;   // informativo
+                porLibro[cantLibros].cantidad = d->cantidad;  
+                porLibro[cantLibros].montoTotal = d->subtotal;  
                 cantLibros++;
             } else {
                 porLibro[pos].cantidad += d->cantidad;
@@ -696,7 +694,7 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
 
     printf("=== LIBROS MÁS VENDIDOS (TOP %d)%s%s ===\n",
            topN, usarFiltro ? " - Año " : "", usarFiltro ? anio : "");
-    printf("%-4s %-15s %-30s %-10s\n", "No.", "Código", "Título", "Cantidad");
+    printf("%-4s %-15s %-30s %-10s\n", "No.", "Codigo", "Titulo", "Cantidad");
     printf("---------------------------------------------------------------\n");
     for (int i = 0; i < cantLibros && i < topN; i++) {
         printf("%-4d %-15s %-30s %-10d\n",

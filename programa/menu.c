@@ -21,7 +21,7 @@ void menuRegistrarLibro() {
     int cantidad;
 
     printf("------- Agregar Libro -------\n\n");
-    printf("\nCódigo del libro:");
+    printf("\nCodigo del libro:");
     input(codigo);
     printf("\nNombre del libro: ");
     input(nombre);
@@ -53,24 +53,24 @@ void menuRegistrarCliente() {
     char telefono[TAM_TELEFONO];
 
     printf("------- Registrar Cliente -------\n\n");
-    printf("Cédula: ");
+    printf("Cedula: ");
     input(cedula);
     if (strlen(cedula) == 0) { 
-        printf("Cédula no puede estar vacía.\n\n"); 
+        printf("Cedula no puede estar vacia.\n\n"); 
         return; 
     }
 
     printf("Nombre: ");
     input(nombre);
     if (strlen(nombre) == 0) { 
-        printf("Nombre no puede estar vacío.\n\n"); 
+        printf("Nombre no puede estar vacio.\n\n"); 
         return; 
     }
 
     printf("Teléfono: ");
     input(telefono);
     if (!validarTelefono(telefono)) { 
-        printf("Teléfono inválido. Debe tener al menos 7 dígitos y solo números.\n\n"); 
+        printf("Telefono invalido. Debe tener al menos 7 digitos y solo numeros.\n\n"); 
         return; 
     }
 
@@ -106,20 +106,20 @@ void menuCrearPedido() {
     int numeroLinea;
     
     do {
-        printf("=== GESTIÓN DE PEDIDO ===\n");
-        printf("1. Agregar línea\n");
-        printf("2. Eliminar línea\n");
+        printf("=== GESTION DE PEDIDO ===\n");
+        printf("1. Agregar linea\n");
+        printf("2. Eliminar linea\n");
         printf("3. Mostrar pedido actual\n");
         printf("4. Generar pedido\n");
         printf("5. Salir sin guardar\n\n");
         
-        printf("Seleccione una opción: ");
+        printf("Seleccione una opcion: ");
         scanf("%d", &opcion);
         printf("\n");
         
         switch (opcion) {
             case 1:
-                printf("Código del libro: ");
+                printf("Codigo del libro: ");
                 input(codigo);
                 printf("Cantidad: ");
                 scanf("%d", &cantidad);
@@ -130,18 +130,18 @@ void menuCrearPedido() {
                 }
                 
                 if (agregarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, codigo, cantidad, libros, cantLibros)) {
-                    printf("Línea agregada correctamente.\n\n");
+                    printf("Linea agregada correctamente.\n\n");
                 }
                 break;
                 
             case 2:
                 if (pedido.cantidadDetalles == 0) {
-                    printf("No hay líneas para eliminar.\n\n");
+                    printf("No hay lineas para eliminar.\n\n");
                     break;
                 }
                 
                 mostrarDetallePedido(pedido.detalles, pedido.cantidadDetalles);
-                printf("Número de línea a eliminar: ");
+                printf("Numero de línea a eliminar: ");
                 scanf("%d", &numeroLinea);
                 eliminarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, numeroLinea);
                 break;
@@ -161,7 +161,7 @@ void menuCrearPedido() {
                 
             case 4:
                 if (pedido.cantidadDetalles == 0) {
-                    printf("No se puede generar un pedido vacío.\n\n");
+                    printf("No se puede generar un pedido vacio.\n\n");
                     break;
                 }
                 
@@ -201,7 +201,7 @@ void menuCrearPedido() {
                 break;
                 
             default:
-                printf("Opción no válida.\n\n");
+                printf("Opcion no válida.\n\n");
                 break;
         }
     } while (opcion != 4 && opcion != 5);
@@ -232,7 +232,7 @@ void menuEstadisticas(void) {
         printf("No hay pedidos registrados.\n\n");
         printf("Presione ENTER para volver...");
         int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
-        getchar();  // espera ENTER
+        getchar();  
         return;
     }
 
@@ -240,14 +240,14 @@ void menuEstadisticas(void) {
         int opcion = 0;
 
         printf("------- Estadisticas -------\n\n");
-        printf("1. Total de ventas (monto por año)\n");
+        printf("1. Total de ventas\n");
         printf("2. Clientes con mas pedidos\n");
-        printf("3. Libros mas vendidos (con filtro opcional por año)\n");
+        printf("3. Libros mas vendidos\n");
         printf("4. Volver\n\n");
         printf("Seleccione una opcion: ");
 
         if (scanf("%d", &opcion) != 1) {
-            // entrada inválida (letras, etc.)
+            // entrada inválida 
             int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
             printf("Opcion no valida.\n\n");
             continue;
@@ -258,7 +258,7 @@ void menuEstadisticas(void) {
         if (opcion == 1) {
             mostrarTotalVentasPorAnio(pedidos, cantidadPedidos);
             printf("Presione ENTER para continuar...");
-            getchar();  // pausa
+            getchar();  
             printf("\n");
         }
         else if (opcion == 2) {
@@ -284,7 +284,7 @@ void menuEstadisticas(void) {
             if (topN <= 0) topN = 5;
 
             printf("Filtrar por año (ej: 2025) o ENTER para todos: ");
-            input(anio);  // tu macro usa fgets
+            input(anio);  
 
             printf("\n");
             if (anio[0] == '\0') {
@@ -306,11 +306,10 @@ void menuEstadisticas(void) {
     }
 }
 
-
 bool menuLogin() {
     char usuario[30];
     char contrasena[30];
-    printf("------- Autenticación -------\n\n");
+    printf("------- Autenticacion -------\n\n");
     printf("Nombre de usuario: ");
     scanf("%s", usuario);
     printf("\nContraseña: ");
@@ -331,7 +330,7 @@ void menuAdministrativo() {
     printf("2. Manejo de inventario\n");
     printf("3. Registrar clientes\n");
     printf("4. Crear pedido\n");
-    printf("5. Estadísticas\n");
+    printf("5. Estadisticas\n");
     printf("6. Salir\n\n");
 
     int opcion;
@@ -387,7 +386,7 @@ void menuMostrarCatalogo() {
 
 void menuOpcionesPrincipales() {
     printf("------- Opciones Principales -------\n\n");
-    printf("1. Consulta de catálogo\n");
+    printf("1. Consulta de catalogo\n");
     printf("2. Consulta de cliente\n");
     printf("3. Salir\n\n");
 
