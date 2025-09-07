@@ -533,3 +533,179 @@ struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
     *cant = cantidadDetalles;
     return detalles;
 }
+
+/* =========================
+   ESTADISTICAS
+   ========================= */
+typedef struct {
+    char clave[50];        // año / cédula / código libro
+    char descripcion[60];  // nombre cliente / título libro (si aplica)
+    int  cantidad;         // pedidos o unidades
+    double montoTotal;     // acumulado
+} Registro;
+
+/* ---- Auxiliares ---- */
+static int buscarRegistro(Registro* arr, int n, const char* clave) {
+    for (int i = 0; i < n; i++) {
+        if (compararString(arr[i].clave, (char*)clave)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// FECHA EN FORMATO "DD/MM/YYYY": tomar los últimos 4
+static void anioDeFecha(const char* fecha, char anio[5]) {
+    int len = (int)strlen(fecha);
+    if (len >= 4) {
+        anio[0] = fecha[len-4];
+        anio[1] = fecha[len-3];
+        anio[2] = fecha[len-2];
+        anio[3] = fecha[len-1];
+        anio[4] = '\0';
+    } else {
+        copiarString(anio, "????");
+    }
+}
+
+static void ordenarPorCantidadDesc(Registro* arr, int n) {
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (arr[j].cantidad < arr[j+1].cantidad) {
+                Registro tmp = arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = tmp;
+            }
+        }
+    }
+}
+
+/* ---- 1) Total de ventas y monto por año ---- */
+void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
+    double montoTotal = 0.0;
+    Registro* porAnio = NULL;
+    int cantAnios = 0;
+
+    for (int i = 0; i < cantPedidos; i++) {
+        montoTotal += pedidos[i]->totalPedido;
+
+        char anio[5];
+        anioDeFecha(pedidos[i]->fecha, anio);
+
+        int pos = buscarRegistro(porAnio, cantAnios, anio);
+        if (pos == -1) {
+            porAnio = (Registro*)realloc(porAnio, (cantAnios + 1) * sizeof(Registro));
+            copiarString(porAnio[cantAnios].clave, anio);
+            porAnio[cantAnios].descripcion[0] = '\0';
+            porAnio[cantAnios].cantidad = 1;
+            porAnio[cantAnios].montoTotal = pedidos[i]->totalPedido;
+            cantAnios++;
+        } else {
+            porAnio[pos].cantidad += 1;
+            porAnio[pos].montoTotal += pedidos[i]->totalPedido;
+        }
+    }
+
+    printf("=== TOTAL DE VENTAS ===\n");
+    printf("Pedidos totales: %d\n", cantPedidos);
+    printf("Monto total:     $%.2f\n\n", montoTotal);
+
+    printf("=== MONTO POR AÑO ===\n");
+    printf("%-8s %-10s %-12s\n", "Año", "Pedidos", "Monto");
+    printf("----------------------------------\n");
+    for (int i = 0; i < cantAnios; i++) {
+        printf("%-8s %-10d $%-11.2f\n",
+               porAnio[i].clave, porAnio[i].cantidad, porAnio[i].montoTotal);
+    }
+    printf("\n");
+
+    free(porAnio);
+}
+
+/* ---- 2) Clientes con más pedidos (burbuja) ---- */
+void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int topN) {
+    Registro* porCliente = NULL;
+    int cantClientes = 0;
+
+    for (int i = 0; i < cantPedidos; i++) {
+        int pos = buscarRegistro(porCliente, cantClientes, pedidos[i]->cedulaCliente);
+        if (pos == -1) {
+            porCliente = (Registro*)realloc(porCliente, (cantClientes + 1) * sizeof(Registro));
+            copiarString(porCliente[cantClientes].clave, pedidos[i]->cedulaCliente);
+            copiarString(porCliente[cantClientes].descripcion, pedidos[i]->nombreCliente);
+            porCliente[cantClientes].cantidad = 1;                  // # pedidos
+            porCliente[cantClientes].montoTotal = pedidos[i]->totalPedido;
+            cantClientes++;
+        } else {
+            porCliente[pos].cantidad += 1;
+            porCliente[pos].montoTotal += pedidos[i]->totalPedido;
+        }
+    }
+
+    ordenarPorCantidadDesc(porCliente, cantClientes);
+
+    printf("=== CLIENTES CON MÁS PEDIDOS (TOP %d) ===\n", topN);
+    printf("%-4s %-15s %-25s %-8s %-12s\n", "No.", "Cédula", "Nombre", "Pedidos", "Monto");
+    printf("------------------------------------------------------------------\n");
+    for (int i = 0; i < cantClientes && i < topN; i++) {
+        printf("%-4d %-15s %-25s %-8d $%-11.2f\n",
+               i+1,
+               porCliente[i].clave,
+               porCliente[i].descripcion,
+               porCliente[i].cantidad,
+               porCliente[i].montoTotal);
+    }
+    printf("\n");
+
+    free(porCliente);
+}
+
+/* ---- 3) Libros más vendidos (filtro por año opcional) ---- */
+void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const char* anio, int topN) {
+    int usarFiltro = (anio != NULL && anio[0] != '\0');
+
+    Registro* porLibro = NULL;
+    int cantLibros = 0;
+
+    for (int i = 0; i < cantPedidos; i++) {
+        if (usarFiltro) {
+            char a[5];
+            anioDeFecha(pedidos[i]->fecha, a);
+            if (!compararString(a, (char*)anio)) continue;
+        }
+
+        for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+            struct DetallePedido* d = pedidos[i]->detalles[j];
+
+            int pos = buscarRegistro(porLibro, cantLibros, d->codigoLibro);
+            if (pos == -1) {
+                porLibro = (Registro*)realloc(porLibro, (cantLibros + 1) * sizeof(Registro));
+                copiarString(porLibro[cantLibros].clave, d->codigoLibro);
+                copiarString(porLibro[cantLibros].descripcion, d->nombreLibro);
+                porLibro[cantLibros].cantidad = d->cantidad;     // unidades
+                porLibro[cantLibros].montoTotal = d->subtotal;   // informativo
+                cantLibros++;
+            } else {
+                porLibro[pos].cantidad += d->cantidad;
+                porLibro[pos].montoTotal += d->subtotal;
+            }
+        }
+    }
+
+    ordenarPorCantidadDesc(porLibro, cantLibros);
+
+    printf("=== LIBROS MÁS VENDIDOS (TOP %d)%s%s ===\n",
+           topN, usarFiltro ? " - Año " : "", usarFiltro ? anio : "");
+    printf("%-4s %-15s %-30s %-10s\n", "No.", "Código", "Título", "Cantidad");
+    printf("---------------------------------------------------------------\n");
+    for (int i = 0; i < cantLibros && i < topN; i++) {
+        printf("%-4d %-15s %-30s %-10d\n",
+               i+1,
+               porLibro[i].clave,
+               porLibro[i].descripcion,
+               porLibro[i].cantidad);
+    }
+    printf("\n");
+
+    free(porLibro);
+}

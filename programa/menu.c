@@ -1,5 +1,5 @@
-#include "menu.h"
 #include "datos.h"
+#include "menu.h"
 #include "auxiliares.h"
 #include "libro.h"
 #include "cliente.h"
@@ -44,6 +44,7 @@ void menuRegistrarLibro() {
         return;
     }
 }
+
 void menuRegistrarCliente() {
     int cant;
     struct Cliente** clientes = cargarClientes(&cant);
@@ -223,6 +224,89 @@ void menuManejoInventario() {
     return;
 }
 
+void menuEstadisticas(void) {
+    int cantidadPedidos = 0;
+    struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
+
+    if (pedidos == NULL || cantidadPedidos == 0) {
+        printf("No hay pedidos registrados.\n\n");
+        printf("Presione ENTER para volver...");
+        int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+        getchar();  // espera ENTER
+        return;
+    }
+
+    while (1) {
+        int opcion = 0;
+
+        printf("------- Estadisticas -------\n\n");
+        printf("1. Total de ventas (monto por año)\n");
+        printf("2. Clientes con mas pedidos\n");
+        printf("3. Libros mas vendidos (con filtro opcional por año)\n");
+        printf("4. Volver\n\n");
+        printf("Seleccione una opcion: ");
+
+        if (scanf("%d", &opcion) != 1) {
+            // entrada inválida (letras, etc.)
+            int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+            printf("Opcion no valida.\n\n");
+            continue;
+        }
+        // limpia '\n' pendiente
+        { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
+        if (opcion == 1) {
+            mostrarTotalVentasPorAnio(pedidos, cantidadPedidos);
+            printf("Presione ENTER para continuar...");
+            getchar();  // pausa
+            printf("\n");
+        }
+        else if (opcion == 2) {
+            int topN = 0;
+            printf("Cuantos desea ver (Top N): ");
+            if (scanf("%d", &topN) != 1) { topN = 5; }
+            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            if (topN <= 0) topN = 5;
+
+            printf("\n");
+            mostrarClientesConMasPedidos(pedidos, cantidadPedidos, topN);
+            printf("Presione ENTER para continuar...");
+            getchar();
+            printf("\n");
+        }
+        else if (opcion == 3) {
+            int topN = 0;
+            char anio[8]; anio[0] = '\0';
+
+            printf("Cuantos desea ver (Top N): ");
+            if (scanf("%d", &topN) != 1) { topN = 5; }
+            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            if (topN <= 0) topN = 5;
+
+            printf("Filtrar por año (ej: 2025) o ENTER para todos: ");
+            input(anio);  // tu macro usa fgets
+
+            printf("\n");
+            if (anio[0] == '\0') {
+                mostrarLibrosMasVendidos(pedidos, cantidadPedidos, NULL, topN);
+            } else {
+                mostrarLibrosMasVendidos(pedidos, cantidadPedidos, anio, topN);
+            }
+            printf("Presione ENTER para continuar...");
+            getchar();
+            printf("\n");
+        }
+        else if (opcion == 4) {
+            printf("Volviendo...\n\n");
+            break;
+        }
+        else {
+            printf("Opcion no valida.\n\n");
+        }
+    }
+}
+
+
 bool menuLogin() {
     char usuario[30];
     char contrasena[30];
@@ -270,6 +354,7 @@ void menuAdministrativo() {
             menuCrearPedido();
             break;
         case 5:
+            menuEstadisticas();
             break;
         case 6:
             menuPrincipal();
@@ -280,7 +365,6 @@ void menuAdministrativo() {
     }
     menuAdministrativo();
 }
-
 
 void menuMostrarCatalogo() {
     int cant;
@@ -361,3 +445,5 @@ void menuPrincipal() {
     }
     menuPrincipal();
 }
+
+

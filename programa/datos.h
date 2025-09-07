@@ -40,4 +40,9 @@ void mostrarDetallePedido(struct DetallePedido**, int);
 void mostrarPedidoCompleto(struct Pedido*);
 struct Pedido** cargarPedidos(int*);
 struct DetallePedido** cargarDetallesPorPedido(char*, int*);
+
+// Estadisticas 
+void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos);
+void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int topN);
+void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const char* anio, int topN);
 #endif

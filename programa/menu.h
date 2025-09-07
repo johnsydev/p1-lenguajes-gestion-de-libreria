@@ -6,10 +6,10 @@
 #include <stdbool.h>
 
 bool menuLogin();
+void menuEstadisticas();
 void menuPrincipal();
 void menuAdministrativo();
 void menuOpcionesPrincipales(); //sin autenticación
-
 
 void menuRegistrarLibro();
 void menuRegistrarCliente();
@@ -17,7 +17,5 @@ void menuCrearPedido();
 
 void menuMostrarCatalogo();
 void menuManejoInventario();
-
-void copiarString();
 
 #endif
