@@ -12,7 +12,9 @@ void menuAdministrativo();
 void menuOpcionesPrincipales(); //sin autenticación
 
 void menuRegistrarLibro();
+void menuEliminarLibro();
 void menuRegistrarCliente();
+void menuEliminarCliente();
 void menuCrearPedido();
 
 void menuMostrarCatalogo();

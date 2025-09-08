@@ -20,6 +20,8 @@ bool registrarLibro(struct Libro**, struct Libro*, int);
 struct Libro** cargarLibros(int*);
 void actualizarTodosLibros(struct Libro**, int*);
 bool modificarInventario(struct Libro**, int*, char*);
+bool tienePedidosLibro(struct Pedido** pedidos, int cantPedidos, const char* codigoLibro);
+bool eliminarLibro(struct Libro*** libros, int* cantLibros, struct Pedido** pedidos, int cantPedidos, const char* codigoLibro);
 
 // Clientes
 struct Cliente** cargarClientes(int*);
@@ -27,6 +29,8 @@ bool registrarCliente(struct Cliente**, struct Cliente*, int);
 void actualizarTodosClientes(struct Cliente**, int*);
 int validarTelefono(char* telefono);
 int existeCedula(struct Cliente**, int, char*);
+bool tienePedidosCliente(struct Pedido** pedidos, int cantPedidos, const char* cedula);
+bool eliminarCliente(struct Cliente*** clientes, int* cantClientes, struct Pedido** pedidos, int cantPedidos, const char* cedula);
 
 // Pedidos
 struct Libro* buscarLibroPorCodigo(struct Libro**, int, char*);
@@ -45,4 +49,8 @@ struct DetallePedido** cargarDetallesPorPedido(char*, int*);
 void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos);
 void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int topN);
 void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const char* anio, int topN);
+void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos);
+void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos);
 #endif
+
+

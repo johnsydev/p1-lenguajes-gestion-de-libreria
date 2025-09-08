@@ -67,7 +67,7 @@ void menuRegistrarCliente() {
         return; 
     }
 
-    printf("Teléfono: ");
+    printf("Telefono: ");
     input(telefono);
     if (!validarTelefono(telefono)) { 
         printf("Telefono invalido. Debe tener al menos 7 digitos y solo numeros.\n\n"); 
@@ -224,7 +224,7 @@ void menuManejoInventario() {
     return;
 }
 
-void menuEstadisticas() {
+void menuEstadisticas(void) {
     int cantidadPedidos = 0;
     struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
 
@@ -232,7 +232,7 @@ void menuEstadisticas() {
         printf("No hay pedidos registrados.\n\n");
         printf("Presione ENTER para volver...");
         int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
-        getchar();  
+        getchar();
         return;
     }
 
@@ -240,41 +240,40 @@ void menuEstadisticas() {
         int opcion = 0;
 
         printf("------- Estadisticas -------\n\n");
-        printf("1. Total de ventas\n");
-        printf("2. Clientes con mas pedidos\n");
-        printf("3. Libros mas vendidos\n");
-        printf("4. Volver\n\n");
+        printf("1. Total de ventas por anio\n");
+        printf("2. Total de ventas por mes/anio\n");
+        printf("3. Clientes con mas pedidos\n");
+        printf("4. Libros mas vendidos\n");
+        printf("5. Autor con mas ventas por anio\n");
+        printf("6. Volver\n\n");
         printf("Seleccione una opcion: ");
 
         if (scanf("%d", &opcion) != 1) {
-            // entrada inválida 
             int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
             printf("Opcion no valida.\n\n");
             continue;
         }
-        // limpia '\n' pendiente
         { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
 
         if (opcion == 1) {
             mostrarTotalVentasPorAnio(pedidos, cantidadPedidos);
-            printf("Presione ENTER para continuar...");
-            getchar();  
-            printf("\n");
+            printf("Presione ENTER para continuar..."); getchar(); printf("\n");
         }
         else if (opcion == 2) {
+            mostrarVentasPorMesAnio(pedidos, cantidadPedidos);
+            printf("Presione ENTER para continuar..."); getchar(); printf("\n");
+        }
+        else if (opcion == 3) {
             int topN = 0;
             printf("Cuantos desea ver (Top N): ");
             if (scanf("%d", &topN) != 1) { topN = 5; }
             { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
             if (topN <= 0) topN = 5;
 
-            printf("\n");
             mostrarClientesConMasPedidos(pedidos, cantidadPedidos, topN);
-            printf("Presione ENTER para continuar...");
-            getchar();
-            printf("\n");
+            printf("Presione ENTER para continuar..."); getchar(); printf("\n");
         }
-        else if (opcion == 3) {
+        else if (opcion == 4) {
             int topN = 0;
             char anio[8]; anio[0] = '\0';
 
@@ -283,20 +282,20 @@ void menuEstadisticas() {
             { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
             if (topN <= 0) topN = 5;
 
-            printf("Filtrar por año (ej: 2025) o ENTER para todos: ");
-            input(anio);  
-
-            printf("\n");
+            printf("Filtrar por anio (ej: 2025) o ENTER para todos: ");
+            input(anio);
             if (anio[0] == '\0') {
                 mostrarLibrosMasVendidos(pedidos, cantidadPedidos, NULL, topN);
             } else {
                 mostrarLibrosMasVendidos(pedidos, cantidadPedidos, anio, topN);
             }
-            printf("Presione ENTER para continuar...");
-            getchar();
-            printf("\n");
+            printf("Presione ENTER para continuar..."); getchar(); printf("\n");
         }
-        else if (opcion == 4) {
+        else if (opcion == 5) {
+            mostrarAutorTopPorAnio(pedidos, cantidadPedidos);
+            printf("Presione ENTER para continuar..."); getchar(); printf("\n");
+        }
+        else if (opcion == 6) {
             printf("Volviendo...\n\n");
             break;
         }
@@ -365,6 +364,60 @@ void menuConsultaPedidos() {
     }
 }
 
+void menuEliminarLibro() {
+    int cantLibros = 0, cantPedidos = 0;
+    struct Libro** libros = cargarLibros(&cantLibros);
+    struct Pedido** pedidos = cargarPedidos(&cantPedidos);
+
+    if (cantLibros == 0) {
+        printf("No hay libros para eliminar.\n\n");
+        return;
+    }
+
+    char codigo[20];
+    { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
+    printf("------- Eliminar Libro -------\n\n");
+    printf("Codigo del libro: ");
+    input(codigo);
+
+    if (strlen(codigo) == 0) {
+        printf("El codigo no puede estar vacio.\n\n");
+        return;
+    }
+
+    if (!eliminarLibro(&libros, &cantLibros, pedidos, cantPedidos, codigo)) {
+        return;
+    }
+}
+
+void menuEliminarCliente() {
+    int cantClientes = 0, cantPedidos = 0;
+    struct Cliente** clientes = cargarClientes(&cantClientes);
+    struct Pedido** pedidos   = cargarPedidos(&cantPedidos);
+
+    if (cantClientes == 0) {
+        printf("No hay clientes para eliminar.\n\n");
+        return;
+    }
+
+    char cedula[TAM_CEDULA];
+    { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
+    printf("------- Eliminar Cliente -------\n\n");
+    printf("Cedula del cliente: ");
+    input(cedula);
+
+    if (strlen(cedula) == 0) {
+        printf("La cedula no puede estar vacia.\n\n");
+        return;
+    }
+
+    if (!eliminarCliente(&clientes, &cantClientes, pedidos, cantPedidos, cedula)) {
+        return;
+    }
+}
+
 bool menuLogin() {
     char usuario[30];
     char contrasena[30];
@@ -386,12 +439,16 @@ bool menuLogin() {
 void menuAdministrativo() {
     printf("------- Menu Administrativo -------\n\n");
     printf("1. Registrar libros\n");
-    printf("2. Manejo de inventario\n");
-    printf("3. Registrar clientes\n");
-    printf("4. Crear pedido\n");
-    printf("5. Consulta de pedidos\n");
-    printf("6. Estadisticas\n");
-    printf("7. Salir\n\n");
+    printf("2. Eliminar Libro\n");
+    printf("3. Manejo de inventario\n");
+    printf("4. Registrar clientes\n");
+    printf("5. Eliminar Cliente\n");
+    printf("6. Crear pedido\n");
+    printf("7. Modificar Pedido\n");
+    printf("8. Eliminar Pedido\n");
+    printf("9. Consulta de pedidos\n");
+    printf("10. Estadisticas\n");
+    printf("11. Salir\n\n");
 
     int opcion;
     printf("Seleccione una opcion: ");
@@ -404,21 +461,31 @@ void menuAdministrativo() {
             menuRegistrarLibro();
             break;
         case 2:
-            menuManejoInventario();
+            menuEliminarLibro();
             break;
         case 3:
-            menuRegistrarCliente();
+            menuManejoInventario();
             break;
         case 4:
-            menuCrearPedido();
+            menuRegistrarCliente();
             break;
         case 5:
-            menuConsultaPedidos();
+            menuEliminarCliente();
             break;
         case 6:
-            menuEstadisticas();
+            menuCrearPedido();
             break;
         case 7:
+            break;
+        case 8:
+            break;
+        case 9:
+            menuConsultaPedidos();
+            break;
+        case 10:
+            menuEstadisticas();
+            break;
+        case 11:
             menuPrincipal();
             break;
         default:

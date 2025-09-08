@@ -89,6 +89,61 @@ void actualizarTodosClientes(struct Cliente** clientes, int* cantidadClientes) {
     fclose(archivo);
 }
 
+static int buscarIndiceCliente(struct Cliente** clientes, int cantClientes, const char* cedula) {
+    for (int i = 0; i < cantClientes; i++) {
+        if (compararString(clientes[i]->cedula, (char*)cedula)) return i;
+    }
+    return -1;
+}
+
+bool tienePedidosCliente(struct Pedido** pedidos, int cantPedidos, const char* cedula) {
+    for (int i = 0; i < cantPedidos; i++) {
+        if (compararString(pedidos[i]->cedulaCliente, (char*)cedula)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool eliminarCliente(struct Cliente*** clientes, int* cantClientes,
+                     struct Pedido** pedidos, int cantPedidos,
+                     const char* cedula) {
+    if (clientes == NULL || *clientes == NULL || *cantClientes <= 0) {
+        printf("No hay clientes cargados.\n\n");
+        return false;
+    }
+
+    if (tienePedidosCliente(pedidos, cantPedidos, cedula)) {
+        printf("No se puede eliminar: el cliente tiene pedidos asociados.\n\n");
+        return false;
+    }
+
+    int ind = buscarIndiceCliente(*clientes, *cantClientes, cedula);
+    if (ind < 0) {
+        printf("Cliente no encontrado.\n\n");
+        return false;
+    }
+
+    // liberar nodo y compactar
+    free((*clientes)[ind]);
+    for (int i = ind; i < (*cantClientes) - 1; i++) {
+        (*clientes)[i] = (*clientes)[i + 1];
+    }
+    (*cantClientes)--;
+
+    if (*cantClientes > 0) {
+        void* nuevo = realloc(*clientes, (*cantClientes) * sizeof(struct Cliente*));
+        if (nuevo != NULL) *clientes = (struct Cliente**)nuevo; 
+    } else {
+        free(*clientes);
+        *clientes = NULL;
+    }
+
+    actualizarTodosClientes(*clientes, cantClientes);  
+    printf("Cliente eliminado correctamente.\n\n");
+    return true;
+}
+
 /*
     Nombre: leerArchivo
     Entrada: Nombre del archivo (char*) y cantidad de lineas (int*)
@@ -279,6 +334,63 @@ bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archi
     }
     printf("\n");
     actualizarTodosLibros(libros, cantidadLibros);
+    return true;
+}
+
+bool tienePedidosLibro(struct Pedido** pedidos, int cantPedidos, const char* codigoLibro) {
+    for (int i = 0; i < cantPedidos; i++) {
+        for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+            if (compararString(pedidos[i]->detalles[j]->codigoLibro, (char*)codigoLibro)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+static int buscarIndiceLibro(struct Libro** libros, int cantLibros, const char* codigo) {
+    for (int i = 0; i < cantLibros; i++) {
+        if (compararString(libros[i]->codigo, (char*)codigo)) return i;
+    }
+    return -1;
+}
+
+bool eliminarLibro(struct Libro*** libros, int* cantLibros,
+                   struct Pedido** pedidos, int cantPedidos,
+                   const char* codigoLibro) {
+    if (libros == NULL || *libros == NULL || *cantLibros <= 0) {
+        printf("No hay libros cargados.\n\n");
+        return false;
+    }
+
+    if (tienePedidosLibro(pedidos, cantPedidos, codigoLibro)) {
+        printf("No se puede eliminar: el libro aparece en pedidos.\n\n");
+        return false;
+    }
+
+    int ind = buscarIndiceLibro(*libros, *cantLibros, codigoLibro);
+    if (ind < 0) {
+        printf("Libro no encontrado.\n\n");
+        return false;
+    }
+
+    // liberar nodo y compactar
+    free((*libros)[ind]);
+    for (int i = ind; i < (*cantLibros) - 1; i++) {
+        (*libros)[i] = (*libros)[i + 1];
+    }
+    (*cantLibros)--;
+
+    if (*cantLibros > 0) {
+        void* nuevo = realloc(*libros, (*cantLibros) * sizeof(struct Libro*));
+        if (nuevo != NULL) *libros = (struct Libro**)nuevo;  // si falla, mantenemos puntero viejo (ya compactado)
+    } else {
+        free(*libros);
+        *libros = NULL;
+    }
+
+    actualizarTodosLibros(*libros, cantLibros);  // OK con 0 items
+    printf("Libro eliminado correctamente.\n\n");
     return true;
 }
 
@@ -543,10 +655,14 @@ typedef struct {
 } Registro;
 
 // Auxiliares
-static int buscarRegistro(Registro* arr, int n, const char* clave) {
+static int buscarRegistro(Registro* arr, int n, const char* clave, const char* descripcionOpcional) {
     for (int i = 0; i < n; i++) {
         if (compararString(arr[i].clave, (char*)clave)) {
-            return i;
+            if (descripcionOpcional == NULL) {
+                return i; 
+            } else if (compararString(arr[i].descripcion, (char*)descripcionOpcional)) {
+                return i; 
+            }
         }
     }
     return -1;
@@ -564,6 +680,21 @@ static void anioDeFecha(const char* fecha, char anio[5]) {
     } else {
         copiarString(anio, "????");
     }
+}
+
+static void mesAnioDeFecha(const char* fecha, char out[8]) {
+    if (!fecha || (int)strlen(fecha) < 10) {
+        copiarString(out, "??" "/????");      
+        return;
+    }
+    out[0] = fecha[3];
+    out[1] = fecha[4];
+    out[2] = '/';
+    out[3] = fecha[6];
+    out[4] = fecha[7];
+    out[5] = fecha[8];
+    out[6] = fecha[9];
+    out[7] = '\0';
 }
 
 static void ordenarPorCantidadDesc(Registro* arr, int n) {
@@ -590,7 +721,7 @@ void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
         char anio[5];
         anioDeFecha(pedidos[i]->fecha, anio);
 
-        int pos = buscarRegistro(porAnio, cantAnios, anio);
+        int pos = buscarRegistro(porAnio, cantAnios, anio, NULL);
         if (pos == -1) {
             porAnio = (Registro*)realloc(porAnio, (cantAnios + 1) * sizeof(Registro));
             copiarString(porAnio[cantAnios].clave, anio);
@@ -626,7 +757,7 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
     int cantClientes = 0;
 
     for (int i = 0; i < cantPedidos; i++) {
-        int pos = buscarRegistro(porCliente, cantClientes, pedidos[i]->cedulaCliente);
+        int pos = buscarRegistro(porCliente, cantClientes, pedidos[i]->cedulaCliente, NULL);
         if (pos == -1) {
             porCliente = (Registro*)realloc(porCliente, (cantClientes + 1) * sizeof(Registro));
             copiarString(porCliente[cantClientes].clave, pedidos[i]->cedulaCliente);
@@ -675,7 +806,7 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
         for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
             struct DetallePedido* d = pedidos[i]->detalles[j];
 
-            int pos = buscarRegistro(porLibro, cantLibros, d->codigoLibro);
+            int pos = buscarRegistro(porLibro, cantLibros, d->codigoLibro, NULL);
             if (pos == -1) {
                 porLibro = (Registro*)realloc(porLibro, (cantLibros + 1) * sizeof(Registro));
                 copiarString(porLibro[cantLibros].clave, d->codigoLibro);
@@ -707,3 +838,124 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
 
     free(porLibro);
 }
+
+void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos) {
+    Registro* porMesAnio = NULL;
+    int totalMeses = 0;
+
+    for (int i = 0; i < cantPedidos; i++) {
+        char mesAnio[8];
+        mesAnioDeFecha(pedidos[i]->fecha, mesAnio);
+
+        int ind = buscarRegistro(porMesAnio, totalMeses, mesAnio, NULL);
+        if (ind == -1) {
+            porMesAnio = (Registro*)realloc(porMesAnio, (totalMeses + 1) * sizeof(Registro));
+            strcpy(porMesAnio[totalMeses].clave, mesAnio);
+            porMesAnio[totalMeses].descripcion[0] = '\0';
+            porMesAnio[totalMeses].cantidad = 1;                    
+            porMesAnio[totalMeses].montoTotal = pedidos[i]->totalPedido; 
+            totalMeses++;
+        } else {
+            porMesAnio[ind].cantidad += 1;
+            porMesAnio[ind].montoTotal += pedidos[i]->totalPedido;
+        }
+    }
+
+    printf("=== TOTAL DE VENTAS POR MES-ANIO ===\n");
+    printf("%-10s %-10s %-12s\n", "Mes/Anio", "Pedidos", "Monto");
+    printf("------------------------------------\n");
+    for (int i = 0; i < totalMeses; i++) {
+        printf("%-10s %-10d $%-11.2f\n",
+               porMesAnio[i].clave, porMesAnio[i].cantidad, porMesAnio[i].montoTotal);
+    }
+    printf("\n");
+
+    free(porMesAnio);
+}
+
+void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
+    int cantLibros = 0;
+    struct Libro** libros = cargarLibros(&cantLibros);
+
+    if (libros == NULL || cantLibros == 0) {
+        printf("No hay libros cargados, imposible calcular autores.\n\n");
+        return;
+    }
+
+    Registro* porAutorAnio = NULL;
+    int totalReg = 0;
+
+    for (int i = 0; i < cantPedidos; i++) {
+        char anio[5];
+        anioDeFecha(pedidos[i]->fecha, anio);
+
+        for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+            struct DetallePedido* d = pedidos[i]->detalles[j];
+
+            const char* autor = NULL;
+            for (int k = 0; k < cantLibros; k++) {
+                if (compararString(libros[k]->codigo, d->codigoLibro)) {
+                    autor = libros[k]->autor;
+                    break;
+                }
+            }
+            if (autor == NULL) continue; 
+
+            int ind = buscarRegistro(porAutorAnio, totalReg, anio, autor);
+            if (ind == -1) {
+                porAutorAnio = (Registro*)realloc(porAutorAnio, (totalReg + 1) * sizeof(Registro));
+                strcpy(porAutorAnio[totalReg].clave, anio);         
+                strcpy(porAutorAnio[totalReg].descripcion, autor);   
+                porAutorAnio[totalReg].cantidad = d->cantidad;      
+                porAutorAnio[totalReg].montoTotal = d->subtotal;    
+                totalReg++;
+            } else {
+                porAutorAnio[ind].cantidad += d->cantidad;
+                porAutorAnio[ind].montoTotal += d->subtotal;
+            }
+        }
+    }
+
+    Registro* anios = NULL;
+    int cantAnios = 0;
+    for (int i = 0; i < totalReg; i++) {
+        int ind = buscarRegistro(anios, cantAnios, porAutorAnio[i].clave, NULL);
+        if (ind == -1) {
+            anios = (Registro*)realloc(anios, (cantAnios + 1) * sizeof(Registro));
+            strcpy(anios[cantAnios].clave, porAutorAnio[i].clave);
+            cantAnios++;
+        }
+    }
+
+    printf("=== AUTOR CON MAS VENTAS POR ANIO (POR MONTO) ===\n");
+    printf("%-8s %-25s %-10s %-12s\n", "Anio", "Autor", "Unidades", "Monto");
+    printf("-------------------------------------------------\n");
+    for (int a = 0; a < cantAnios; a++) {
+        const char* anio = anios[a].clave;
+
+        double mejorMonto = -1.0;
+        int mejorUnidades = 0;
+        char mejorAutor[64]; mejorAutor[0] = '\0';
+
+        for (int i = 0; i < totalReg; i++) {
+            if (compararString(porAutorAnio[i].clave, (char*)anio)) {
+                if (porAutorAnio[i].montoTotal > mejorMonto) {
+                    mejorMonto = porAutorAnio[i].montoTotal;
+                    mejorUnidades = porAutorAnio[i].cantidad;
+                    strcpy(mejorAutor, porAutorAnio[i].descripcion);
+                }
+            }
+        }
+
+        if (mejorAutor[0] != '\0') {
+            printf("%-8s %-25s %-10d $%-11.2f\n",
+                   anio, mejorAutor, mejorUnidades, mejorMonto);
+        }
+    }
+    printf("\n");
+
+    free(anios);
+    free(porAutorAnio);
+}
+
+
