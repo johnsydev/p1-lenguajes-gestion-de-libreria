@@ -16,6 +16,8 @@ void menuRegistrarCliente();
 void menuCrearPedido();
 
 void menuMostrarCatalogo();
+void menuConsultaCliente();
+void menuConsultaPedidos();
 void menuManejoInventario();
 
 #endif

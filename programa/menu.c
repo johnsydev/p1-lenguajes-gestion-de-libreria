@@ -224,7 +224,7 @@ void menuManejoInventario() {
     return;
 }
 
-void menuEstadisticas(void) {
+void menuEstadisticas() {
     int cantidadPedidos = 0;
     struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
 
@@ -306,6 +306,65 @@ void menuEstadisticas(void) {
     }
 }
 
+void menuConsultaPedidos() {
+    int cantidadPedidos = 0;
+    struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
+
+    if (pedidos == NULL || cantidadPedidos == 0) {
+        printf("No hay pedidos registrados.\n\n");
+        printf("Presione ENTER para volver...");
+        int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+        getchar();
+        return;
+    }
+
+    while (1) {
+        // Listado
+        printf("------- Consulta de pedidos -------\n\n");
+        printf("%-4s %-12s %-25s %-12s %-12s %-12s\n",
+               "No.", "Identificador", "Cliente", "Fecha", "Subtotal", "Total");
+        printf("-------------------------------------------------------------------------------\n");
+
+        for (int i = 0; i < cantidadPedidos; i++) {
+            struct Pedido* p = pedidos[i];
+            printf("%-4d %-12s %-25s %-12s $%-11.2f $%-11.2f\n",
+                   i + 1,
+                   p->idPedido,
+                   p->nombreCliente,
+                   p->fecha,
+                   p->subtotalPedido,
+                   p->totalPedido);
+        }
+        printf("\n");
+
+        int opcion = -1;
+        printf("Seleccione un pedido por numero (1-%d) o 0 para volver: ", cantidadPedidos);
+        if (scanf("%d", &opcion) != 1) {
+            int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+            printf("Opcion no valida.\n\n");
+            continue;
+        }
+        // limpiar '\n'
+        { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
+        if (opcion == 0) {
+            printf("Volviendo...\n\n");
+            break;
+        }
+        if (opcion < 1 || opcion > cantidadPedidos) {
+            printf("Numero fuera de rango.\n\n");
+            continue;
+        }
+
+        struct Pedido* seleccionado = pedidos[opcion - 1];
+        mostrarPedidoCompleto(seleccionado);
+
+        printf("Presione ENTER para volver a la lista...");
+        getchar();
+        printf("\n");
+    }
+}
+
 bool menuLogin() {
     char usuario[30];
     char contrasena[30];
@@ -330,8 +389,9 @@ void menuAdministrativo() {
     printf("2. Manejo de inventario\n");
     printf("3. Registrar clientes\n");
     printf("4. Crear pedido\n");
-    printf("5. Estadisticas\n");
-    printf("6. Salir\n\n");
+    printf("5. Consulta de pedidos\n");
+    printf("6. Estadisticas\n");
+    printf("7. Salir\n\n");
 
     int opcion;
     printf("Seleccione una opcion: ");
@@ -353,9 +413,12 @@ void menuAdministrativo() {
             menuCrearPedido();
             break;
         case 5:
-            menuEstadisticas();
+            menuConsultaPedidos();
             break;
         case 6:
+            menuEstadisticas();
+            break;
+        case 7:
             menuPrincipal();
             break;
         default:
@@ -384,6 +447,67 @@ void menuMostrarCatalogo() {
     }
 }
 
+void menuConsultaCliente() {
+    int cantidadClientes = 0, cantidadPedidos = 0;
+    struct Cliente** clientes = cargarClientes(&cantidadClientes);
+    struct Pedido** pedidos   = cargarPedidos(&cantidadPedidos);
+
+    char cedula[TAM_CEDULA];
+
+    { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+    printf("------- Consulta de cliente -------\n\n");
+    printf("Cedula del cliente: ");
+    input(cedula);
+    printf("\n");
+
+    if (strlen(cedula) == 0) {
+        printf("La cedula no puede estar vacía.\n\n");
+        return;
+    }
+
+    // Buscar cliente
+    struct Cliente* cliente = buscarClientePorCedula(clientes, cantidadClientes, cedula);
+    if (cliente == NULL) {
+        printf("Cliente no encontrado.\n\n");
+        return;
+    }
+
+    // Mostrar datos del cliente
+    printf("=== DATOS DEL CLIENTE ===\n");
+    printf("Cedula : %s\n", cliente->cedula);
+    printf("Nombre : %s\n", cliente->nombre);
+    printf("Telefono: %s\n\n", cliente->telefono);
+
+    printf("=== PEDIDOS DEL CLIENTE ===\n");
+    printf("%-10s %-12s %-10s %-10s %-15s\n",
+           "Codigo", "Fecha", "Subtotal", "Total", "Cant. libros");
+    printf("-------------------------------------------------------------\n");
+
+   // Mostrar pedidos del cliente
+    int pedidosMostrados = 0;
+    for (int i = 0; i < cantidadPedidos; i++) {
+        if (compararString(pedidos[i]->cedulaCliente, cedula)) {
+            int cantidadLibros = 0;
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                cantidadLibros += pedidos[i]->detalles[j]->cantidad;
+            }
+
+            printf("%-10s %-12s $%-9.2f $%-9.2f %-15d\n",
+                   pedidos[i]->idPedido,
+                   pedidos[i]->fecha,
+                   pedidos[i]->subtotalPedido,
+                   pedidos[i]->totalPedido,
+                   cantidadLibros);
+            pedidosMostrados++;
+        }
+    }
+
+    if (pedidosMostrados == 0) {
+        printf("El cliente no tiene pedidos registrados.\n");
+    }
+    printf("\n");
+}
+
 void menuOpcionesPrincipales() {
     printf("------- Opciones Principales -------\n\n");
     printf("1. Consulta de catalogo\n");
@@ -401,6 +525,7 @@ void menuOpcionesPrincipales() {
             menuMostrarCatalogo();
             break;
         case 2:
+            menuConsultaCliente();
             break;
         case 3:
             menuPrincipal();

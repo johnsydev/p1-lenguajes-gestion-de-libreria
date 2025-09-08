@@ -642,7 +642,7 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
 
     ordenarPorCantidadDesc(porCliente, cantClientes);
 
-    printf("=== CLIENTES CON MÁS PEDIDOS (TOP %d) ===\n", topN);
+    printf("=== CLIENTES CON MAS PEDIDOS (TOP %d) ===\n", topN);
     printf("%-4s %-15s %-25s %-8s %-12s\n", "No.", "Cedula", "Nombre", "Pedidos", "Monto");
     printf("------------------------------------------------------------------\n");
     for (int i = 0; i < cantClientes && i < topN; i++) {
@@ -692,7 +692,7 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
 
     ordenarPorCantidadDesc(porLibro, cantLibros);
 
-    printf("=== LIBROS MÁS VENDIDOS (TOP %d)%s%s ===\n",
+    printf("=== LIBROS MAS VENDIDOS (TOP %d)%s%s ===\n",
            topN, usarFiltro ? " - Año " : "", usarFiltro ? anio : "");
     printf("%-4s %-15s %-30s %-10s\n", "No.", "Codigo", "Titulo", "Cantidad");
     printf("---------------------------------------------------------------\n");
