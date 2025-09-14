@@ -6,13 +6,14 @@
 #include "libro.h"
 #include "cliente.h"
 #include "pedido.h"
+#include "config.h"
 
 #define CLIENTES_TXT "clientes.txt"
 #define PEDIDOS_TXT "pedidos.txt"
 #define DETALLES_TXT "detalles.txt"
 
 char** leerArchivo(char*, int*);
-bool verificarAdmin(char*, char*);
+bool verificarAdmin(char*, char*, struct Configuracion*);
 char** separarTexto(char*, char, int);
 
 // Libros
@@ -38,11 +39,10 @@ struct Cliente* buscarClientePorCedula(struct Cliente**, int, char*);
 bool agregarDetallePedido(struct DetallePedido***, int*, char*, int, struct Libro**, int);
 bool eliminarDetallePedido(struct DetallePedido***, int*, int);
 void calcularTotalesPedido(struct DetallePedido**, int, float*, float*, float*);
-bool generarPedido(struct Pedido*, struct Libro**, int*);
-char* generarIdPedido();
+bool generarPedido(struct Pedido*, struct Libro**, int*, struct Configuracion*);
 bool eliminarPedido(struct Pedido***, int*, const char*);
 void mostrarDetallePedido(struct DetallePedido**, int);
-void mostrarPedidoCompleto(struct Pedido*);
+void mostrarPedidoCompleto(struct Pedido*, struct Configuracion*);
 struct Pedido** cargarPedidos(int*);
 struct DetallePedido** cargarDetallesPorPedido(char*, int*);
 

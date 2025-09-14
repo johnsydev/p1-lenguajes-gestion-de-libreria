@@ -4,6 +4,7 @@
 #include "auxiliares.h"
 #include "pedido.h"
 #include "registro.h"
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -182,24 +183,12 @@ char** leerArchivo(char* nombreArchivo, int* cantidadLineas) {
 }
 
 
-bool verificarAdmin(char* usuario, char* contrasena) {
-    int* cantidadLineas;
-    char** credenciales = leerArchivo("acceso.txt", cantidadLineas);
-
-    if (credenciales == NULL) {
-        printf("Error al leer el archivo.\n");
+bool verificarAdmin(char* usuario, char* contrasena, struct Configuracion* config) {
+    if (!config) { 
         return false;
     }
-    
-    for (int i = 0; i < *cantidadLineas; i++) {
-        char** info = separarTexto(credenciales[i], ';', 2);
-        char* infoUsuario = info[0];
-        char* infoContrasena = info[1];
-        if (compararString(infoUsuario, usuario) == true && compararString(infoContrasena, contrasena) == true) {
-            return true;
-        }
-    }
-    return false;
+
+    return (compararString(config->usuarioAdmin, usuario) && compararString(config->contrasenaAdmin, contrasena));
 }
 
 /*
@@ -486,16 +475,6 @@ void calcularTotalesPedido(struct DetallePedido** detalles, int cantidadDetalles
     *total = *subtotal + *impuesto;
 }
 
-char* generarIdPedido() {
-    static char *id = NULL;
-    if (!id) {
-        id = malloc(TAM_ID_PEDIDO * sizeof(char));
-        time_t t = time(NULL);
-        snprintf(id, TAM_ID_PEDIDO, "%ld", t % 100000);
-    }
-    return id;
-}
-
 bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* idPedido) {
     if (pedidos == NULL || *pedidos == NULL || *cantidadPedidos <= 0) {
         printf("No hay pedidos cargados.\n\n");
@@ -514,31 +493,112 @@ bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* 
         return false;
     }
 
-    nuevoIndice = 0
-    for (int i = 0; i < (*cantidadPedidos) - 1; i++) {
-        if (i != ind) {
-            (*pedidos)[i] = (*pedidos)[nuevoIndice];
+    // Revertir el stock de los libros ANTES de eliminar el pedido
+    int cantLibros = 0;
+    struct Libro** libros = cargarLibros(&cantLibros);
+    
+    if (libros != NULL) {
+        for (int i = 0; i < (*pedidos)[ind]->cantidadDetalles; i++) {
+            struct DetallePedido* detalle = (*pedidos)[ind]->detalles[i];
+            struct Libro* libro = buscarLibroPorCodigo(libros, cantLibros, detalle->codigoLibro);
+            if (libro != NULL) {
+                libro->cantidad += detalle->cantidad;
+                printf("Stock restaurado para libro %s: +%d unidades\n", 
+                       detalle->codigoLibro, detalle->cantidad);
+            }
         }
-        nuevoIndice++;
+        // Actualizar archivo de libros con el stock restaurado
+        actualizarTodosLibros(libros, &cantLibros);
+    }
+
+    // Liberar memoria del pedido que se va a eliminar
+    for (int i = 0; i < (*pedidos)[ind]->cantidadDetalles; i++) {
+        free((*pedidos)[ind]->detalles[i]->codigoLibro);
+        free((*pedidos)[ind]->detalles[i]->nombreLibro);
+        free((*pedidos)[ind]->detalles[i]);
+    }
+    free((*pedidos)[ind]->detalles);
+    free((*pedidos)[ind]->idPedido);
+    free((*pedidos)[ind]->cedulaCliente);
+    free((*pedidos)[ind]->nombreCliente);
+    free((*pedidos)[ind]->fecha);
+    free((*pedidos)[ind]);
+
+   
+    for (int i = ind; i < (*cantidadPedidos) - 1; i++) {
+        (*pedidos)[i] = (*pedidos)[i + 1];
     }
     (*cantidadPedidos)--;
 
+    
     if (*cantidadPedidos > 0) {
         void* nuevo = realloc(*pedidos, (*cantidadPedidos) * sizeof(struct Pedido*));
-        if (nuevo != NULL) *pedidos = (struct Pedido**)nuevo; 
+        if (nuevo != NULL) {
+            *pedidos = (struct Pedido**)nuevo; 
+        }
     } else {
         free(*pedidos);
         *pedidos = NULL;
     }
 
-    // Actualizar archivos
+    // Actualizar archivo de pedidos
     FILE *archivoPedidos = fopen(PEDIDOS_TXT, "w");
-    for (int i = 0; i < *cantidadPedidos; i++) {
-        if (i == 0) {
-            fprintf(archivoPedidos, "%s;%s;%s;%s;%.2f;%.2f;%.2f", 
-                    (*pedidos)[i]->idPedido, (*pedidos)[i]->cedulaCliente, 
-                    (*pedidos)[i]->nombreCliente, (*pedidos)[i]->fecha, 
-                    (*pedidos
+    if (archivoPedidos != NULL) {
+        for (int i = 0; i < *cantidadPedidos; i++) {
+            if (i == 0) {
+                fprintf(archivoPedidos, "%s;%s;%s;%s;%.2f;%.2f;%.2f", 
+                        (*pedidos)[i]->idPedido, (*pedidos)[i]->cedulaCliente, 
+                        (*pedidos)[i]->nombreCliente, (*pedidos)[i]->fecha, 
+                        (*pedidos)[i]->subtotalPedido, (*pedidos)[i]->impuesto, 
+                        (*pedidos)[i]->totalPedido);
+            } else {
+                fprintf(archivoPedidos, "\n%s;%s;%s;%s;%.2f;%.2f;%.2f", 
+                        (*pedidos)[i]->idPedido, (*pedidos)[i]->cedulaCliente, 
+                        (*pedidos)[i]->nombreCliente, (*pedidos)[i]->fecha, 
+                        (*pedidos)[i]->subtotalPedido, (*pedidos)[i]->impuesto, 
+                        (*pedidos)[i]->totalPedido);
+            }
+        }
+        fclose(archivoPedidos);
+    }
+
+    // Actualizar archivo de detalles
+    FILE *archivoDetalles = fopen(DETALLES_TXT, "w");
+    if (archivoDetalles != NULL) {
+        bool primero = true;
+        for (int i = 0; i < *cantidadPedidos; i++) {
+            for (int j = 0; j < (*pedidos)[i]->cantidadDetalles; j++) {
+                if (primero) {
+                    fprintf(archivoDetalles, "%s;%s;%s;%.2f;%d;%.2f",
+                            (*pedidos)[i]->idPedido, (*pedidos)[i]->detalles[j]->codigoLibro, 
+                            (*pedidos)[i]->detalles[j]->nombreLibro, (*pedidos)[i]->detalles[j]->precio, 
+                            (*pedidos)[i]->detalles[j]->cantidad, (*pedidos)[i]->detalles[j]->subtotal);
+                    primero = false;
+                } else {
+                    fprintf(archivoDetalles, "\n%s;%s;%s;%.2f;%d;%.2f",
+                            (*pedidos)[i]->idPedido, (*pedidos)[i]->detalles[j]->codigoLibro, 
+                            (*pedidos)[i]->detalles[j]->nombreLibro, (*pedidos)[i]->detalles[j]->precio, 
+                            (*pedidos)[i]->detalles[j]->cantidad, (*pedidos)[i]->detalles[j]->subtotal);
+                }
+            }
+        }
+        fclose(archivoDetalles);
+    }
+
+    // Liberar memoria de libros
+    if (libros != NULL) {
+        for (int i = 0; i < cantLibros; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
+    }
+
+    printf("Pedido eliminado correctamente y stock restaurado.\n\n");
+    return true;
+}
 
 void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles) {
     if (cantidadDetalles == 0) {
@@ -562,7 +622,12 @@ void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles)
     printf("\n");
 }
 
-bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros) {
+bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros, struct Configuracion* config) {
+    // Generar ID secuencial
+    char* idGenerado = generarIdPedidoSecuencial(config);
+    pedido->idPedido = asignarString(idGenerado);
+    free(idGenerado);
+    
     // Descontar del stock
     for (int i = 0; i < pedido->cantidadDetalles; i++) {
         struct Libro* libro = buscarLibroPorCodigo(libros, *cantLibros, pedido->detalles[i]->codigoLibro);
@@ -603,11 +668,12 @@ bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros
     return true;
 }
 
-void mostrarPedidoCompleto(struct Pedido* pedido) {
+void mostrarPedidoCompleto(struct Pedido* pedido, struct Configuracion* config) {
     printf("\n");
     printf("===============================================\n");
-    printf("                COMERCIO\n");
-    printf("                COMERCIO\n");
+    printf("                %s\n", config ? config->nombreLocal : "COMERCIO");
+    printf("           Tel: %s\n", config ? config->telefono : "N/A");
+    printf("        Cédula: %s\n", config ? config->cedulaJuridica : "N/A");
     printf("===============================================\n");
     printf("Pedido No: %s\n", pedido->idPedido);
     printf("Fecha: %s\n", pedido->fecha);
@@ -620,6 +686,10 @@ void mostrarPedidoCompleto(struct Pedido* pedido) {
     printf("Subtotal:        $%.2f\n", pedido->subtotalPedido);
     printf("Impuesto (13%%):  $%.2f\n", pedido->impuesto);
     printf("TOTAL:           $%.2f\n", pedido->totalPedido);
+    printf("===============================================\n");
+    if (config && config->horarioAtencion) {
+        printf("Horario: %s\n", config->horarioAtencion);
+    }
     printf("===============================================\n\n");
 }
 

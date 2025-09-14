@@ -5,6 +5,7 @@
 #include "cliente.h"
 #include "pedido.h"
 #include "registro.h"
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -91,7 +92,7 @@ void menuRegistrarCliente() {
     }
 }
 
-void menuCrearPedido() {
+void menuCrearPedido(struct Configuracion* config) {
     int cantLibros, cantClientes;
     struct Libro** libros = cargarLibros(&cantLibros);
     struct Cliente** clientes = cargarClientes(&cantClientes);
@@ -183,30 +184,28 @@ void menuCrearPedido() {
                 }
                 
                 // Llenar datos del pedido
-                copiarString(pedido.idPedido, generarIdPedido());
-                copiarString(pedido.cedulaCliente, cliente->cedula);
-                copiarString(pedido.nombreCliente, cliente->nombre);
+                pedido.cedulaCliente = asignarString(cliente->cedula);
+                pedido.nombreCliente = asignarString(cliente->nombre);
                 
                 // Fecha actual
                 time_t t = time(NULL);
                 struct tm *fecha = localtime(&t);
+                pedido.fecha = malloc(TAM_FECHA * sizeof(char));
                 snprintf(pedido.fecha, TAM_FECHA, "%02d/%02d/%04d", 
                         fecha->tm_mday, fecha->tm_mon + 1, fecha->tm_year + 1900);
                 
                 calcularTotalesPedido(pedido.detalles, pedido.cantidadDetalles, 
                                      &pedido.subtotalPedido, &pedido.impuesto, &pedido.totalPedido);
                 
-                if (generarPedido(&pedido, libros, &cantLibros)) {
-                    mostrarPedidoCompleto(&pedido);
+                if (generarPedido(&pedido, libros, &cantLibros, config)) {
+                    mostrarPedidoCompleto(&pedido, config);
                     printf("Pedido generado exitosamente.\n\n");
-                    free(generarIdPedido());
                     return;
                 }
                 break;
                 
             case 5:
                 printf("Saliendo sin guardar...\n\n");
-                free(generarIdPedido());
                 break;
                 
             default:
@@ -221,7 +220,9 @@ void menuEliminarPedido() {
     struct Pedido** pedidos = cargarPedidos(&cantPedidos);
 
     if (cantPedidos == 0) {
-        printf("No hay pedidos para eliminar en el sistema.\n\n");
+        printf("No hay pedidos registrados.\n\n");
+        printf("Presione ENTER para volver...");
+        getchar();
         return;
     }
 
@@ -229,17 +230,49 @@ void menuEliminarPedido() {
     { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
 
     printf("------- Eliminar Pedido -------\n\n");
-    printf("Identificador del pedido: ");
+    
+    // Mostrar lista de pedidos
+    printf("Pedidos disponibles:\n");
+    printf("%-12s %-25s %-12s %-12s\n", "ID", "Cliente", "Fecha", "Total");
+    printf("---------------------------------------------------------------\n");
+    for (int i = 0; i < cantPedidos; i++) {
+        printf("%-12s %-25s %-12s $%-11.2f\n",
+               pedidos[i]->idPedido,
+               pedidos[i]->nombreCliente,
+               pedidos[i]->fecha,
+               pedidos[i]->totalPedido);
+    }
+    printf("\n");
+    
+    printf("Identificador del pedido a eliminar: ");
     input(idPedido, TAM_ID_PEDIDO);
 
     if (strlen(idPedido) == 0) {
-        printf("El identificador no puede estar vacio.\n\n");
+        printf("ID de pedido no puede estar vacío.\n\n");
+        free(idPedido);
         return;
     }
 
     if (!eliminarPedido(&pedidos, &cantPedidos, idPedido)) {
-        return;
+        printf("No se pudo eliminar el pedido.\n\n");
     }
+
+    // Liberar memoria
+    for (int i = 0; i < cantPedidos; i++) {
+        for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+            free(pedidos[i]->detalles[j]->codigoLibro);
+            free(pedidos[i]->detalles[j]->nombreLibro);
+            free(pedidos[i]->detalles[j]);
+        }
+        free(pedidos[i]->detalles);
+        free(pedidos[i]->idPedido);
+        free(pedidos[i]->cedulaCliente);
+        free(pedidos[i]->nombreCliente);
+        free(pedidos[i]->fecha);
+        free(pedidos[i]);
+    }
+    free(pedidos);
+    free(idPedido);
 }
 
 void menuManejoInventario() {
@@ -341,7 +374,7 @@ void menuEstadisticas(void) {
     }
 }
 
-void menuConsultaPedidos() {
+void menuConsultaPedidos(struct Configuracion* config) {
     int cantidadPedidos = 0;
     struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
 
@@ -392,7 +425,7 @@ void menuConsultaPedidos() {
         }
 
         struct Pedido* seleccionado = pedidos[opcion - 1];
-        mostrarPedidoCompleto(seleccionado);
+        mostrarPedidoCompleto(seleccionado, config);
 
         printf("Presione ENTER para volver a la lista...");
         getchar();
@@ -454,7 +487,7 @@ void menuEliminarCliente() {
     }
 }
 
-bool menuLogin() {
+bool menuLogin(struct Configuracion* config) {
     char *usuario = malloc(30 * sizeof(char));
     char *contrasena = malloc(30 * sizeof(char));
     printf("------- Autenticacion -------\n\n");
@@ -464,15 +497,15 @@ bool menuLogin() {
     input(contrasena, 30);
     printf("\n\n");
 
-    if (verificarAdmin(usuario, contrasena)) {
+    if (verificarAdmin(usuario, contrasena, config)) {
         printf("Acceso concedido.\n\n");
         return true;
     }
-    printf("Usuario o contraseña incorrectos.\n\n");
+    printf("Usuario o contraseña incorrectos.\n\n");
     return false;    
 }
 
-void menuAdministrativo() {
+void menuAdministrativo(struct Configuracion* config) {
     printf("------- Menu Administrativo -------\n\n");
     printf("1. Registrar libros\n");
     printf("2. Eliminar Libro\n");
@@ -509,7 +542,7 @@ void menuAdministrativo() {
             menuEliminarCliente();
             break;
         case 6:
-            menuCrearPedido();
+            menuCrearPedido(config);
             break;
         case 7:
             break;
@@ -517,7 +550,7 @@ void menuAdministrativo() {
             menuEliminarPedido();
             break;
         case 9:
-            menuConsultaPedidos();
+            menuConsultaPedidos(config);
             break;
         case 10:
             menuEstadisticas();
@@ -529,7 +562,7 @@ void menuAdministrativo() {
             printf("Opcion no valida.\n\n");
             break;
     }
-    menuAdministrativo();
+    menuAdministrativo(config);
 }
 
 void menuMostrarCatalogo() {
@@ -642,6 +675,12 @@ void menuOpcionesPrincipales() {
 }
 
 void menuPrincipal() {
+    struct Configuracion* config = cargarConfiguracion();
+    if (!config) {
+        printf("Error al cargar la configuración. Saliendo...\n");
+        exit(1);
+    }
+
     printf("------- Menu Principal -------\n\n");
     printf("1. Administrativo\n");
     printf("2. Opciones principales\n");
@@ -656,21 +695,24 @@ void menuPrincipal() {
     switch (opcion)
     {
         case 1:
-            auth = menuLogin();
+            auth = menuLogin(config);
             if (auth) {
-                menuAdministrativo();
+                menuAdministrativo(config);
             }
             break;
         case 2:
             menuOpcionesPrincipales();
             break;
         case 3:
+            liberarConfiguracion(config);
             exit(0);
             break;
         default:
             printf("Opcion no valida.\n\n");
             break;
     }
+    
+    liberarConfiguracion(config);
     menuPrincipal();
 }
 
