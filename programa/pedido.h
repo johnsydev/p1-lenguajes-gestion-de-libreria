@@ -7,18 +7,18 @@
 #define IMPUESTO_VENTA 0.13  // 13% de impuesto
 
 struct DetallePedido {
-    char codigoLibro[TAM_CODIGO_LIBRO];
-    char nombreLibro[100];
+    char *codigoLibro; //TAM_CODIGO_LIBRO
+    char *nombreLibro; //100
     float precio;
     int cantidad;
     float subtotal;
 };
 
 struct Pedido {
-    char idPedido[TAM_ID_PEDIDO];
-    char cedulaCliente[15];
-    char nombreCliente[50];
-    char fecha[TAM_FECHA];
+    char *idPedido; //TAM_ID_PEDIDO
+    char *cedulaCliente; //TAMANO_CEDULA
+    char *nombreCliente; //TAMANO_NOMBRE
+    char *fecha; //TAM_FECHA
     struct DetallePedido** detalles;
     int cantidadDetalles;
     float subtotalPedido;

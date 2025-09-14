@@ -3,6 +3,7 @@
 #include "libro.h"
 #include "auxiliares.h"
 #include "pedido.h"
+#include "registro.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,9 +22,9 @@ struct Cliente** cargarClientes(int* cant) {
     for (int i = 0; i < cantidadLineas; i++) {
         char** info = separarTexto(clientesTxt[i], ';', 3);
         struct Cliente* cliente = malloc(sizeof(struct Cliente));
-        copiarString(cliente->cedula, info[0]);
-        copiarString(cliente->nombre, info[1]);
-        copiarString(cliente->telefono, info[2]);
+        cliente->cedula = asignarString(info[0]);
+        cliente->nombre = asignarString(info[1]);
+        cliente->telefono = asignarString(info[2]);
         clientes[i] = cliente;
         for (int j = 0; j < 3; j++) free(info[j]);
         free(info);
@@ -43,7 +44,9 @@ int existeCedula(struct Cliente** clientes, int cantidad, char* cedula) {
 
 int validarTelefono(char* telefono) {
     int len = strlen(telefono);
-    if (len < 7) return 0;
+    if (len < 7) {
+        return 0;
+    } 
     for (int i = 0; i < len; i++) {
         if (telefono[i] < '0' || telefono[i] > '9') {
             return 0;
@@ -156,7 +159,7 @@ bool eliminarCliente(struct Cliente*** clientes, int* cantClientes,
 char** leerArchivo(char* nombreArchivo, int* cantidadLineas) {
     char** lineas = NULL;
     int cantidad = 0;
-    char linea[150];
+    char* linea = malloc(150 * sizeof(char));
     FILE *archivo = fopen(nombreArchivo, "r");
 
     if (archivo == NULL) {
@@ -212,7 +215,7 @@ bool verificarAdmin(char* usuario, char* contrasena) {
 */
 char** separarTexto(char* texto, char delimitador, int cantidad) {
     char** array = malloc(cantidad * sizeof(char*));
-    char temp[100];
+    char* temp = malloc(100 * sizeof(char));
     int indiceArray = 0;
     int indiceTexto = 0;
     int indiceTemp = 0;
@@ -253,9 +256,9 @@ struct Libro** cargarLibros(int* cant) {
     for (int i = 0; i < cantidadLineas; i++) {
         char** info = separarTexto(librosTxt[i], ';', 5);
         struct Libro* libro = malloc(sizeof(struct Libro));
-        copiarString(libro->codigo, info[0]);
-        copiarString(libro->nombre, info[1]);
-        copiarString(libro->autor, info[2]);
+        libro->codigo = asignarString(info[0]);
+        libro->nombre = asignarString(info[1]);
+        libro->autor  = asignarString(info[2]);
         libro->precio = atof(info[3]);
         libro->cantidad = atoi(info[4]);
         libros[i] = libro;
@@ -443,9 +446,9 @@ bool agregarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalle
     // Agregar nuevo detalle
     *detalles = realloc(*detalles, (*cantidadDetalles + 1) * sizeof(struct DetallePedido*));
     (*detalles)[*cantidadDetalles] = malloc(sizeof(struct DetallePedido));
-    
-    copiarString((*detalles)[*cantidadDetalles]->codigoLibro, libro->codigo);
-    copiarString((*detalles)[*cantidadDetalles]->nombreLibro, libro->nombre);
+
+    (*detalles)[*cantidadDetalles]->codigoLibro = asignarString(libro->codigo);
+    (*detalles)[*cantidadDetalles]->nombreLibro = asignarString(libro->nombre);
     (*detalles)[*cantidadDetalles]->precio = libro->precio;
     (*detalles)[*cantidadDetalles]->cantidad = cantidad;
     (*detalles)[*cantidadDetalles]->subtotal = cantidad * libro->precio;
@@ -484,9 +487,12 @@ void calcularTotalesPedido(struct DetallePedido** detalles, int cantidadDetalles
 }
 
 char* generarIdPedido() {
-    static char id[TAM_ID_PEDIDO];
-    time_t t = time(NULL);
-    snprintf(id, TAM_ID_PEDIDO, "%ld", t % 100000);
+    static char *id = NULL;
+    if (!id) {
+        id = malloc(TAM_ID_PEDIDO * sizeof(char));
+        time_t t = time(NULL);
+        snprintf(id, TAM_ID_PEDIDO, "%ld", t % 100000);
+    }
     return id;
 }
 
@@ -588,10 +594,10 @@ struct Pedido** cargarPedidos(int* cant) {
         char** info = separarTexto(pedidosTxt[i], ';', 7);
         struct Pedido* pedido = malloc(sizeof(struct Pedido));
         
-        copiarString(pedido->idPedido, info[0]);
-        copiarString(pedido->cedulaCliente, info[1]);
-        copiarString(pedido->nombreCliente, info[2]);
-        copiarString(pedido->fecha, info[3]);
+        pedido->idPedido = asignarString(info[0]);
+        pedido->cedulaCliente = asignarString(info[1]);
+        pedido->nombreCliente = asignarString(info[2]);
+        pedido->fecha = asignarString(info[3]);
         pedido->subtotalPedido = atof(info[4]);
         pedido->impuesto = atof(info[5]);
         pedido->totalPedido = atof(info[6]);
@@ -629,8 +635,8 @@ struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
             detalles = realloc(detalles, (cantidadDetalles + 1) * sizeof(struct DetallePedido*));
             detalles[cantidadDetalles] = malloc(sizeof(struct DetallePedido));
             
-            copiarString(detalles[cantidadDetalles]->codigoLibro, info[1]);
-            copiarString(detalles[cantidadDetalles]->nombreLibro, info[2]);
+            detalles[cantidadDetalles]->codigoLibro = asignarString(info[1]);
+            detalles[cantidadDetalles]->nombreLibro = asignarString(info[2]);
             detalles[cantidadDetalles]->precio = atof(info[3]);
             detalles[cantidadDetalles]->cantidad = atoi(info[4]);
             detalles[cantidadDetalles]->subtotal = atof(info[5]);
@@ -647,12 +653,7 @@ struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
 }
 
 // Estadisticas
-typedef struct {
-    char clave[50];        
-    char descripcion[60];  
-    int  cantidad;         
-    double montoTotal;     
-} Registro;
+
 
 // Auxiliares
 static int buscarRegistro(Registro* arr, int n, const char* clave, const char* descripcionOpcional) {
@@ -669,7 +670,7 @@ static int buscarRegistro(Registro* arr, int n, const char* clave, const char* d
 }
 
 // Toma los últimos 4 caracteres de la fecha como año
-static void anioDeFecha(const char* fecha, char anio[5]) {
+static void anioDeFecha(const char* fecha, char* anio) {
     int len = (int)strlen(fecha);
     if (len >= 4) {
         anio[0] = fecha[len-4];
@@ -682,7 +683,7 @@ static void anioDeFecha(const char* fecha, char anio[5]) {
     }
 }
 
-static void mesAnioDeFecha(const char* fecha, char out[8]) {
+static void mesAnioDeFecha(const char* fecha, char* out) {
     if (!fecha || (int)strlen(fecha) < 10) {
         copiarString(out, "??" "/????");      
         return;
@@ -718,13 +719,13 @@ void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
     for (int i = 0; i < cantPedidos; i++) {
         montoTotal += pedidos[i]->totalPedido;
 
-        char anio[5];
+        char* anio = malloc(5 * sizeof(char));
         anioDeFecha(pedidos[i]->fecha, anio);
 
         int pos = buscarRegistro(porAnio, cantAnios, anio, NULL);
         if (pos == -1) {
             porAnio = (Registro*)realloc(porAnio, (cantAnios + 1) * sizeof(Registro));
-            copiarString(porAnio[cantAnios].clave, anio);
+            porAnio[cantAnios].clave = asignarString(anio);
             porAnio[cantAnios].descripcion[0] = '\0';
             porAnio[cantAnios].cantidad = 1;
             porAnio[cantAnios].montoTotal = pedidos[i]->totalPedido;
@@ -760,8 +761,8 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
         int pos = buscarRegistro(porCliente, cantClientes, pedidos[i]->cedulaCliente, NULL);
         if (pos == -1) {
             porCliente = (Registro*)realloc(porCliente, (cantClientes + 1) * sizeof(Registro));
-            copiarString(porCliente[cantClientes].clave, pedidos[i]->cedulaCliente);
-            copiarString(porCliente[cantClientes].descripcion, pedidos[i]->nombreCliente);
+            porCliente[cantClientes].clave = asignarString(pedidos[i]->cedulaCliente);
+            porCliente[cantClientes].descripcion = asignarString(pedidos[i]->nombreCliente);
             porCliente[cantClientes].cantidad = 1;              
             porCliente[cantClientes].montoTotal = pedidos[i]->totalPedido;
             cantClientes++;
@@ -798,7 +799,7 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
 
     for (int i = 0; i < cantPedidos; i++) {
         if (usarFiltro) {
-            char a[5];
+            char* a = malloc(5 * sizeof(char));
             anioDeFecha(pedidos[i]->fecha, a);
             if (!compararString(a, (char*)anio)) continue;
         }
@@ -809,10 +810,10 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
             int pos = buscarRegistro(porLibro, cantLibros, d->codigoLibro, NULL);
             if (pos == -1) {
                 porLibro = (Registro*)realloc(porLibro, (cantLibros + 1) * sizeof(Registro));
-                copiarString(porLibro[cantLibros].clave, d->codigoLibro);
-                copiarString(porLibro[cantLibros].descripcion, d->nombreLibro);
-                porLibro[cantLibros].cantidad = d->cantidad;  
-                porLibro[cantLibros].montoTotal = d->subtotal;  
+                porLibro[cantLibros].clave = asignarString(d->codigoLibro);
+                porLibro[cantLibros].descripcion = asignarString(d->nombreLibro);
+                porLibro[cantLibros].cantidad = d->cantidad;
+                porLibro[cantLibros].montoTotal = d->subtotal;
                 cantLibros++;
             } else {
                 porLibro[pos].cantidad += d->cantidad;
@@ -844,13 +845,13 @@ void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos) {
     int totalMeses = 0;
 
     for (int i = 0; i < cantPedidos; i++) {
-        char mesAnio[8];
+        char* mesAnio = malloc(8 * sizeof(char));
         mesAnioDeFecha(pedidos[i]->fecha, mesAnio);
 
         int ind = buscarRegistro(porMesAnio, totalMeses, mesAnio, NULL);
         if (ind == -1) {
             porMesAnio = (Registro*)realloc(porMesAnio, (totalMeses + 1) * sizeof(Registro));
-            strcpy(porMesAnio[totalMeses].clave, mesAnio);
+            porMesAnio[totalMeses].clave = asignarString(mesAnio);
             porMesAnio[totalMeses].descripcion[0] = '\0';
             porMesAnio[totalMeses].cantidad = 1;                    
             porMesAnio[totalMeses].montoTotal = pedidos[i]->totalPedido; 
@@ -886,13 +887,13 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
     int totalReg = 0;
 
     for (int i = 0; i < cantPedidos; i++) {
-        char anio[5];
+        char* anio = malloc(5 * sizeof(char));
         anioDeFecha(pedidos[i]->fecha, anio);
 
         for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
             struct DetallePedido* d = pedidos[i]->detalles[j];
 
-            const char* autor = NULL;
+            char* autor = NULL;
             for (int k = 0; k < cantLibros; k++) {
                 if (compararString(libros[k]->codigo, d->codigoLibro)) {
                     autor = libros[k]->autor;
@@ -904,8 +905,8 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
             int ind = buscarRegistro(porAutorAnio, totalReg, anio, autor);
             if (ind == -1) {
                 porAutorAnio = (Registro*)realloc(porAutorAnio, (totalReg + 1) * sizeof(Registro));
-                strcpy(porAutorAnio[totalReg].clave, anio);         
-                strcpy(porAutorAnio[totalReg].descripcion, autor);   
+                porAutorAnio[totalReg].clave = asignarString(anio);
+                porAutorAnio[totalReg].descripcion = asignarString(autor);
                 porAutorAnio[totalReg].cantidad = d->cantidad;      
                 porAutorAnio[totalReg].montoTotal = d->subtotal;    
                 totalReg++;
@@ -935,7 +936,8 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
 
         double mejorMonto = -1.0;
         int mejorUnidades = 0;
-        char mejorAutor[64]; mejorAutor[0] = '\0';
+        char* mejorAutor = malloc(64 * sizeof(char));
+        mejorAutor[0] = '\0';
 
         for (int i = 0; i < totalReg; i++) {
             if (compararString(porAutorAnio[i].clave, (char*)anio)) {

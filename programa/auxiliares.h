@@ -3,7 +3,8 @@
 
 #include <stdbool.h>
 
-void copiarString(char destino[], char origen[]);
-bool compararString(char str1[], char str2[]);
+void copiarString(char*, char*);
+bool compararString(char*, char*);
+char* asignarString(char*);
 
 #endif

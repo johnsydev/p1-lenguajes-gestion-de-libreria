@@ -4,82 +4,89 @@
 #include "libro.h"
 #include "cliente.h"
 #include "pedido.h"
+#include "registro.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
 
-#define input(texto) fflush(stdin); fgets(texto, sizeof(texto), stdin); texto[strcspn(texto, "\n")] = 0;
+#define input(texto, size) fflush(stdin); fgets(texto, size, stdin); texto[strcspn(texto, "\n")] = 0;
 
 void menuRegistrarLibro() {
     int cant;
     struct Libro** libros = cargarLibros(&cant);
-    char codigo[20];
-    char nombre[100];
-    char autor[50];
+    char *codigo = malloc(20 * sizeof(char));
+    char *nombre = malloc(100 * sizeof(char));
+    char *autor  = malloc(50 * sizeof(char));
     float precio;
     int cantidad;
 
     printf("------- Agregar Libro -------\n\n");
     printf("\nCodigo del libro:");
-    input(codigo);
+    input(codigo, 20);
     printf("\nNombre del libro: ");
-    input(nombre);
+    input(nombre, 100);
     printf("\nAutor: ");
-    input(autor);
+    input(autor, 50);
     printf("\nPrecio: ");
     scanf("%f", &precio);
     printf("\nCantidad disponible: ");
     scanf("%d", &cantidad);
     printf("\n\n");
 
-    struct Libro nuevoLibro;
-    copiarString(nuevoLibro.codigo, codigo);
-    copiarString(nuevoLibro.nombre, nombre);
-    copiarString(nuevoLibro.autor, autor);
-    nuevoLibro.precio = precio;
-    nuevoLibro.cantidad = cantidad;
-    if (registrarLibro(libros, &nuevoLibro, cant)) {
+    struct Libro* nuevoLibro = malloc(sizeof(struct Libro));
+
+    nuevoLibro->codigo = asignarString(codigo);
+    nuevoLibro->nombre = asignarString(nombre);
+    nuevoLibro->autor  = asignarString(autor);
+
+    nuevoLibro->precio = precio;
+    nuevoLibro->cantidad = cantidad;
+
+    if (registrarLibro(libros, nuevoLibro, cant)) {
         printf("Libro agregado correctamente.\n\n");
-        return;
     }
+    free(codigo);
+    free(nombre);
+    free(autor);
 }
 
 void menuRegistrarCliente() {
     int cant;
     struct Cliente** clientes = cargarClientes(&cant);
-    char cedula[TAM_CEDULA];
-    char nombre[TAM_NOMBRE];
-    char telefono[TAM_TELEFONO];
+    char *cedula = malloc(TAM_CEDULA * sizeof(char));
+    char *nombre = malloc(TAM_NOMBRE * sizeof(char));
+    char *telefono = malloc(TAM_TELEFONO * sizeof(char));
 
     printf("------- Registrar Cliente -------\n\n");
     printf("Cedula: ");
-    input(cedula);
+    input(cedula, TAM_CEDULA);
     if (strlen(cedula) == 0) { 
         printf("Cedula no puede estar vacia.\n\n"); 
         return; 
     }
 
     printf("Nombre: ");
-    input(nombre);
+    input(nombre, TAM_NOMBRE);
     if (strlen(nombre) == 0) { 
         printf("Nombre no puede estar vacio.\n\n"); 
         return; 
     }
 
     printf("Telefono: ");
-    input(telefono);
+    input(telefono, TAM_TELEFONO);
     if (!validarTelefono(telefono)) { 
         printf("Telefono invalido. Debe tener al menos 7 digitos y solo numeros.\n\n"); 
         return; 
     }
 
-    struct Cliente nuevoCliente;
-    copiarString(nuevoCliente.cedula, cedula);
-    copiarString(nuevoCliente.nombre, nombre);
-    copiarString(nuevoCliente.telefono, telefono);
+    struct Cliente* nuevoCliente = malloc(sizeof(struct Cliente));
 
-    if (registrarCliente(clientes, &nuevoCliente, cant)) {
+    nuevoCliente->cedula = asignarString(cedula);
+    nuevoCliente->nombre = asignarString(nombre);
+    nuevoCliente->telefono = asignarString(telefono);
+
+    if (registrarCliente(clientes, nuevoCliente, cant)) {
         printf("Cliente registrado correctamente.\n\n");
     }
 }
@@ -101,7 +108,7 @@ void menuCrearPedido() {
     printf("------- Crear Pedido -------\n\n");
     
     int opcion;
-    char codigo[20];
+    char *codigo = malloc(20 * sizeof(char));
     int cantidad;
     int numeroLinea;
     
@@ -120,7 +127,7 @@ void menuCrearPedido() {
         switch (opcion) {
             case 1:
                 printf("Codigo del libro: ");
-                input(codigo);
+                input(codigo, 20);
                 printf("Cantidad: ");
                 scanf("%d", &cantidad);
                 
@@ -164,10 +171,10 @@ void menuCrearPedido() {
                     printf("No se puede generar un pedido vacio.\n\n");
                     break;
                 }
-                
-                char cedula[15];
+
+                char *cedula = malloc(TAM_CEDULA * sizeof(char));
                 printf("Cédula del cliente: ");
-                input(cedula);
+                input(cedula, TAM_CEDULA);
                 
                 struct Cliente* cliente = buscarClientePorCedula(clientes, cantClientes, cedula);
                 if (cliente == NULL) {
@@ -192,12 +199,14 @@ void menuCrearPedido() {
                 if (generarPedido(&pedido, libros, &cantLibros)) {
                     mostrarPedidoCompleto(&pedido);
                     printf("Pedido generado exitosamente.\n\n");
+                    free(generarIdPedido());
                     return;
                 }
                 break;
                 
             case 5:
                 printf("Saliendo sin guardar...\n\n");
+                free(generarIdPedido());
                 break;
                 
             default:
@@ -212,8 +221,8 @@ void menuManejoInventario() {
     printf("Este menu permite modificar la cantidad de libros disponibles, cargando la informacion desde un archivo.\n\n");
     printf("Escriba el nombre de archivo o presione [Enter] para volver atras.\n\n> ");
 
-    char archivo[100];
-    input(archivo);
+    char *archivo = malloc(100 * sizeof(char));
+    input(archivo, 100);
     if (archivo[0] == '\0') {
         return;
     }
@@ -275,7 +284,8 @@ void menuEstadisticas(void) {
         }
         else if (opcion == 4) {
             int topN = 0;
-            char anio[8]; anio[0] = '\0';
+            char *anio = malloc(8 * sizeof(char));
+            anio[0] = '\0';
 
             printf("Cuantos desea ver (Top N): ");
             if (scanf("%d", &topN) != 1) { topN = 5; }
@@ -283,7 +293,7 @@ void menuEstadisticas(void) {
             if (topN <= 0) topN = 5;
 
             printf("Filtrar por anio (ej: 2025) o ENTER para todos: ");
-            input(anio);
+            input(anio, sizeof(anio));
             if (anio[0] == '\0') {
                 mostrarLibrosMasVendidos(pedidos, cantidadPedidos, NULL, topN);
             } else {
@@ -374,12 +384,12 @@ void menuEliminarLibro() {
         return;
     }
 
-    char codigo[20];
+    char *codigo = malloc(20 * sizeof(char));
     { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
 
     printf("------- Eliminar Libro -------\n\n");
     printf("Codigo del libro: ");
-    input(codigo);
+    input(codigo, 20);
 
     if (strlen(codigo) == 0) {
         printf("El codigo no puede estar vacio.\n\n");
@@ -401,12 +411,12 @@ void menuEliminarCliente() {
         return;
     }
 
-    char cedula[TAM_CEDULA];
+    char *cedula = malloc(TAM_CEDULA * sizeof(char));
     { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
 
     printf("------- Eliminar Cliente -------\n\n");
     printf("Cedula del cliente: ");
-    input(cedula);
+    input(cedula, TAM_CEDULA);
 
     if (strlen(cedula) == 0) {
         printf("La cedula no puede estar vacia.\n\n");
@@ -419,13 +429,13 @@ void menuEliminarCliente() {
 }
 
 bool menuLogin() {
-    char usuario[30];
-    char contrasena[30];
+    char *usuario = malloc(30 * sizeof(char));
+    char *contrasena = malloc(30 * sizeof(char));
     printf("------- Autenticacion -------\n\n");
     printf("Nombre de usuario: ");
-    scanf("%s", usuario);
+    input(usuario, 30);
     printf("\nContraseña: ");
-    scanf("%s", contrasena);
+    input(contrasena, 30);
     printf("\n\n");
 
     if (verificarAdmin(usuario, contrasena)) {
@@ -440,13 +450,13 @@ void menuAdministrativo() {
     printf("------- Menu Administrativo -------\n\n");
     printf("1. Registrar libros\n");
     printf("2. Eliminar Libro\n");
-    printf("3. Manejo de inventario\n");
+    printf("3. Manejo de inventario\n\n");
     printf("4. Registrar clientes\n");
-    printf("5. Eliminar Cliente\n");
+    printf("5. Eliminar Cliente\n\n");
     printf("6. Crear pedido\n");
     printf("7. Modificar Pedido\n");
     printf("8. Eliminar Pedido\n");
-    printf("9. Consulta de pedidos\n");
+    printf("9. Consulta de pedidos\n\n");
     printf("10. Estadisticas\n");
     printf("11. Salir\n\n");
 
@@ -519,12 +529,12 @@ void menuConsultaCliente() {
     struct Cliente** clientes = cargarClientes(&cantidadClientes);
     struct Pedido** pedidos   = cargarPedidos(&cantidadPedidos);
 
-    char cedula[TAM_CEDULA];
+    char *cedula = malloc(TAM_CEDULA * sizeof(char));
 
     { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
     printf("------- Consulta de cliente -------\n\n");
     printf("Cedula del cliente: ");
-    input(cedula);
+    input(cedula, TAM_CEDULA);
     printf("\n");
 
     if (strlen(cedula) == 0) {

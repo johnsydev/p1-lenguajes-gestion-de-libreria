@@ -2,9 +2,9 @@
 #define LIBRO_H
 
 struct Libro {
-    char codigo[20];
-    char nombre[100];
-    char autor[50];
+    char* codigo;
+    char* nombre;
+    char* autor;
     float precio;
     int cantidad;
 };

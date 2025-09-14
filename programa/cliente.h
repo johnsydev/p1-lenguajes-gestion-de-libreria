@@ -6,9 +6,9 @@
 #define TAM_TELEFONO 15
 
 struct Cliente {
-    char cedula[TAM_CEDULA];
-    char nombre[TAM_NOMBRE];
-    char telefono[TAM_TELEFONO];
+    char *cedula;
+    char *nombre;
+    char *telefono;
 };
 
 #endif
