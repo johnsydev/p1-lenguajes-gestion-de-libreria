@@ -216,6 +216,32 @@ void menuCrearPedido() {
     } while (opcion != 4 && opcion != 5);
 }
 
+void menuEliminarPedido() {
+    int cantPedidos = 0;
+    struct Pedido** pedidos = cargarPedidos(&cantPedidos);
+
+    if (cantPedidos == 0) {
+        printf("No hay pedidos para eliminar en el sistema.\n\n");
+        return;
+    }
+
+    char *idPedido = malloc(TAM_ID_PEDIDO * sizeof(char));
+    { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
+    printf("------- Eliminar Pedido -------\n\n");
+    printf("Identificador del pedido: ");
+    input(idPedido, TAM_ID_PEDIDO);
+
+    if (strlen(idPedido) == 0) {
+        printf("El identificador no puede estar vacio.\n\n");
+        return;
+    }
+
+    if (!eliminarPedido(&pedidos, &cantPedidos, idPedido)) {
+        return;
+    }
+}
+
 void menuManejoInventario() {
     printf("------- Manejo de inventario -------\n\n");
     printf("Este menu permite modificar la cantidad de libros disponibles, cargando la informacion desde un archivo.\n\n");
@@ -488,6 +514,7 @@ void menuAdministrativo() {
         case 7:
             break;
         case 8:
+            menuEliminarPedido();
             break;
         case 9:
             menuConsultaPedidos();

@@ -496,6 +496,50 @@ char* generarIdPedido() {
     return id;
 }
 
+bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* idPedido) {
+    if (pedidos == NULL || *pedidos == NULL || *cantidadPedidos <= 0) {
+        printf("No hay pedidos cargados.\n\n");
+        return false;
+    }
+
+    int ind = -1;
+    for (int i = 0; i < *cantidadPedidos; i++) {
+        if (compararString((*pedidos)[i]->idPedido, (char*)idPedido)) {
+            ind = i;
+            break;
+        }
+    }
+    if (ind < 0) {
+        printf("Pedido no encontrado.\n\n");
+        return false;
+    }
+
+    nuevoIndice = 0
+    for (int i = 0; i < (*cantidadPedidos) - 1; i++) {
+        if (i != ind) {
+            (*pedidos)[i] = (*pedidos)[nuevoIndice];
+        }
+        nuevoIndice++;
+    }
+    (*cantidadPedidos)--;
+
+    if (*cantidadPedidos > 0) {
+        void* nuevo = realloc(*pedidos, (*cantidadPedidos) * sizeof(struct Pedido*));
+        if (nuevo != NULL) *pedidos = (struct Pedido**)nuevo; 
+    } else {
+        free(*pedidos);
+        *pedidos = NULL;
+    }
+
+    // Actualizar archivos
+    FILE *archivoPedidos = fopen(PEDIDOS_TXT, "w");
+    for (int i = 0; i < *cantidadPedidos; i++) {
+        if (i == 0) {
+            fprintf(archivoPedidos, "%s;%s;%s;%s;%.2f;%.2f;%.2f", 
+                    (*pedidos)[i]->idPedido, (*pedidos)[i]->cedulaCliente, 
+                    (*pedidos)[i]->nombreCliente, (*pedidos)[i]->fecha, 
+                    (*pedidos
+
 void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles) {
     if (cantidadDetalles == 0) {
         printf("No hay lineas en el pedido.\n\n");

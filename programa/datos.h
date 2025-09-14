@@ -40,6 +40,7 @@ bool eliminarDetallePedido(struct DetallePedido***, int*, int);
 void calcularTotalesPedido(struct DetallePedido**, int, float*, float*, float*);
 bool generarPedido(struct Pedido*, struct Libro**, int*);
 char* generarIdPedido();
+bool eliminarPedido(struct Pedido***, int*, const char*);
 void mostrarDetallePedido(struct DetallePedido**, int);
 void mostrarPedidoCompleto(struct Pedido*);
 struct Pedido** cargarPedidos(int*);
