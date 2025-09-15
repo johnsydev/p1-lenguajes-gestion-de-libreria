@@ -11,8 +11,24 @@
 #include <stdbool.h>
 #include <time.h>
 
+/*
+    Macro: input
+    Entrada: buffer de texto (char*), tamaño máximo (size_t)
+    Salida: escribe en el buffer la línea leída sin el '\n' final
+    Objetivo:
+        Leer una línea de stdin, limpiar el '\n' y dejarla lista para uso.
+        (Usa fflush(stdin) + fgets + eliminación del salto de línea).
+*/
 #define input(texto, size) fflush(stdin); fgets(texto, size, stdin); texto[strcspn(texto, "\n")] = 0;
 
+/*
+    Nombre: menuRegistrarLibro
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Solicitar datos del libro por consola, crear la estructura y
+        llamar a registrarLibro para persistirlo. Maneja liberación de memoria.
+*/
 void menuRegistrarLibro() {
     int cant;
     struct Libro** libros = cargarLibros(&cant);
@@ -50,8 +66,29 @@ void menuRegistrarLibro() {
     free(codigo);
     free(nombre);
     free(autor);
+    if (libros) {
+        for (int i = 0; i < cant; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
+    }
+    free(nuevoLibro->codigo);
+    free(nuevoLibro->nombre);
+    free(nuevoLibro->autor);
+    free(nuevoLibro);
 }
 
+/*
+    Nombre: menuRegistrarCliente
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Pedir datos del cliente, validar campos básicos y registrar el cliente.
+        Libera toda la memoria utilizada independientemente del resultado.
+*/
 void menuRegistrarCliente() {
     int cant;
     struct Cliente** clientes = cargarClientes(&cant);
@@ -64,6 +101,16 @@ void menuRegistrarCliente() {
     input(cedula, TAM_CEDULA);
     if (strlen(cedula) == 0) { 
         printf("Cedula no puede estar vacia.\n\n"); 
+        free(cedula); free(nombre); free(telefono);
+        if (clientes) {
+            for (int i = 0; i < cant; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
         return; 
     }
 
@@ -71,6 +118,16 @@ void menuRegistrarCliente() {
     input(nombre, TAM_NOMBRE);
     if (strlen(nombre) == 0) { 
         printf("Nombre no puede estar vacio.\n\n"); 
+        free(cedula); free(nombre); free(telefono);
+        if (clientes) {
+            for (int i = 0; i < cant; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
         return; 
     }
 
@@ -78,6 +135,16 @@ void menuRegistrarCliente() {
     input(telefono, TAM_TELEFONO);
     if (!validarTelefono(telefono)) { 
         printf("Telefono invalido. Debe tener al menos 7 digitos y solo numeros.\n\n"); 
+        free(cedula); free(nombre); free(telefono);
+        if (clientes) {
+            for (int i = 0; i < cant; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
         return; 
     }
 
@@ -87,11 +154,39 @@ void menuRegistrarCliente() {
     nuevoCliente->nombre = asignarString(nombre);
     nuevoCliente->telefono = asignarString(telefono);
 
-    if (registrarCliente(clientes, nuevoCliente, cant)) {
+    struct Cliente** temp = registrarCliente(clientes, nuevoCliente, &cant);
+    if (temp != NULL) {
+        if (temp != clientes) clientes = temp;  
         printf("Cliente registrado correctamente.\n\n");
+    } else {
+        printf("No se pudo registrar el cliente.\n\n");
     }
+    free(cedula); 
+    free(nombre); 
+    free(telefono);
+    if (clientes) {
+        for (int i = 0; i < cant; i++) {
+            free(clientes[i]->cedula);
+            free(clientes[i]->nombre);
+            free(clientes[i]->telefono);
+            free(clientes[i]);
+        }
+        free(clientes);
+    }
+    free(nuevoCliente->cedula);
+    free(nuevoCliente->nombre);
+    free(nuevoCliente->telefono);
+    free(nuevoCliente);
 }
 
+/*
+    Nombre: menuCrearPedido
+    Entrada: puntero a Configuracion
+    Salida: void
+    Objetivo:
+        Interfaz para construir un pedido: agregar/eliminar líneas, mostrar
+        totales y finalmente generar el pedido (persistir encabezado/detalles).
+*/
 void menuCrearPedido(struct Configuracion* config) {
     int cantLibros, cantClientes;
     struct Libro** libros = cargarLibros(&cantLibros);
@@ -99,12 +194,25 @@ void menuCrearPedido(struct Configuracion* config) {
     
     if (cantLibros == 0) {
         printf("No hay libros disponibles para crear pedidos.\n\n");
+        if (libros) free(libros);
+        if (clientes) {
+            for (int i = 0; i < cantClientes; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
         return;
     }
     
-    struct Pedido pedido;
+    struct Pedido pedido = {0};
     pedido.detalles = NULL;
     pedido.cantidadDetalles = 0;
+    pedido.cedulaCliente = NULL;
+    pedido.nombreCliente = NULL;
+    pedido.fecha = NULL;
     
     printf("------- Crear Pedido -------\n\n");
     
@@ -149,7 +257,7 @@ void menuCrearPedido(struct Configuracion* config) {
                 }
                 
                 mostrarDetallePedido(pedido.detalles, pedido.cantidadDetalles);
-                printf("Numero de línea a eliminar: ");
+                printf("Numero de linea a eliminar: ");
                 scanf("%d", &numeroLinea);
                 eliminarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, numeroLinea);
                 break;
@@ -174,12 +282,13 @@ void menuCrearPedido(struct Configuracion* config) {
                 }
 
                 char *cedula = malloc(TAM_CEDULA * sizeof(char));
-                printf("Cédula del cliente: ");
+                printf("Cedula del cliente: ");
                 input(cedula, TAM_CEDULA);
                 
                 struct Cliente* cliente = buscarClientePorCedula(clientes, cantClientes, cedula);
                 if (cliente == NULL) {
                     printf("Cliente no encontrado.\n\n");
+                    free(cedula);
                     break;
                 }
                 
@@ -200,8 +309,42 @@ void menuCrearPedido(struct Configuracion* config) {
                 if (generarPedido(&pedido, libros, &cantLibros, config)) {
                     mostrarPedidoCompleto(&pedido, config);
                     printf("Pedido generado exitosamente.\n\n");
+
+                    free(cedula);
+                    for (int i = 0; i < pedido.cantidadDetalles; i++) {
+                        free(pedido.detalles[i]->codigoLibro);
+                        free(pedido.detalles[i]->nombreLibro);
+                        free(pedido.detalles[i]);
+                    }
+                    free(pedido.detalles);
+                    free(pedido.cedulaCliente);
+                    free(pedido.nombreCliente);
+                    free(pedido.fecha);
+
+                    free(codigo);
+
+                    if (libros) {
+                        for (int i = 0; i < cantLibros; i++) {
+                            free(libros[i]->codigo);
+                            free(libros[i]->nombre);
+                            free(libros[i]->autor);
+                            free(libros[i]);
+                        }
+                        free(libros);
+                    }
+                    if (clientes) {
+                        for (int i = 0; i < cantClientes; i++) {
+                            free(clientes[i]->cedula);
+                            free(clientes[i]->nombre);
+                            free(clientes[i]->telefono);
+                            free(clientes[i]);
+                        }
+                        free(clientes);
+                    }
                     return;
                 }
+
+                free(cedula);
                 break;
                 
             case 5:
@@ -213,8 +356,48 @@ void menuCrearPedido(struct Configuracion* config) {
                 break;
         }
     } while (opcion != 4 && opcion != 5);
+
+    free(codigo);
+    for (int i = 0; i < pedido.cantidadDetalles; i++) {
+        free(pedido.detalles[i]->codigoLibro);
+        free(pedido.detalles[i]->nombreLibro);
+        free(pedido.detalles[i]);
+    }
+    free(pedido.detalles);
+
+    free(pedido.cedulaCliente);
+    free(pedido.nombreCliente);
+    free(pedido.fecha);
+
+    if (libros) {
+        for (int i = 0; i < cantLibros; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
+    }
+
+    if (clientes) {
+        for (int i = 0; i < cantClientes; i++) {
+            free(clientes[i]->cedula);
+            free(clientes[i]->nombre);
+            free(clientes[i]->telefono);
+            free(clientes[i]);
+        }
+        free(clientes);
+    }
 }
 
+/*
+    Nombre: menuEliminarPedido
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Listar pedidos, solicitar un ID y eliminarlo usando eliminarPedido,
+        actualizando archivos y liberando la memoria restante.
+*/
 void menuEliminarPedido() {
     int cantPedidos = 0;
     struct Pedido** pedidos = cargarPedidos(&cantPedidos);
@@ -248,7 +431,7 @@ void menuEliminarPedido() {
     input(idPedido, TAM_ID_PEDIDO);
 
     if (strlen(idPedido) == 0) {
-        printf("ID de pedido no puede estar vacío.\n\n");
+        printf("ID de pedido no puede estar vacio.\n\n");
         free(idPedido);
         return;
     }
@@ -275,6 +458,188 @@ void menuEliminarPedido() {
     free(idPedido);
 }
 
+/*
+    Nombre: menuModificarPedido
+    Entrada: puntero a Configuracion
+    Salida: void
+    Objetivo:
+        Permitir editar un pedido existente: cambiar cantidades, agregar o
+        eliminar líneas y guardar cambios afectando el inventario y archivos.
+*/
+void menuModificarPedido(struct Configuracion* config) {
+    int cantPedidos = 0, cantLibros = 0;
+    struct Pedido** pedidos = cargarPedidos(&cantPedidos);
+    struct Libro**  libros  = cargarLibros(&cantLibros);
+
+    if (cantPedidos == 0) {
+        printf("No hay pedidos registrados.\n\n");
+        printf("Presione ENTER para volver...");
+        int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+        getchar();
+        return;
+    }
+
+    printf("------- Modificar Pedido -------\n\n");
+    printf("%-12s %-25s %-12s %-12s\n", "ID", "Cliente", "Fecha", "Total");
+    printf("---------------------------------------------------------------\n");
+    for (int i = 0; i < cantPedidos; i++) {
+        printf("%-12s %-25s %-12s $%-11.2f\n",
+               pedidos[i]->idPedido, pedidos[i]->nombreCliente,
+               pedidos[i]->fecha, pedidos[i]->totalPedido);
+    }
+    printf("\n");
+
+    char id[30];
+    { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+    printf("Identificador del pedido a modificar: ");
+    input(id, 30);
+    if (id[0] == '\0') { printf("ID vacio.\n\n"); return; }
+
+    int indicePedido = -1;
+    for (int i = 0; i < cantPedidos; i++) {
+        if (compararString(pedidos[i]->idPedido, id)) { indicePedido = i; break; }
+    }
+    if (indicePedido < 0) {
+        printf("Pedido no encontrado.\n\n");
+        return;
+    }
+    struct Pedido* ped = pedidos[indicePedido];
+
+    int nOriginal = ped->cantidadDetalles;
+    char** codigosOriginales = malloc(nOriginal * sizeof(char*));
+    int* cantidadesOriginales = malloc(nOriginal * sizeof(int));
+    for (int i = 0; i < nOriginal; i++) {
+        codigosOriginales[i] = asignarString(ped->detalles[i]->codigoLibro);
+        cantidadesOriginales[i] = ped->detalles[i]->cantidad;
+    }
+
+    int salir = 0;
+    while (!salir) {
+        printf("\n=== EDITAR PEDIDO %s ===\n", ped->idPedido);
+        mostrarDetallePedido(ped->detalles, ped->cantidadDetalles);
+
+        printf("1. Cambiar cantidad de una linea\n");
+        printf("2. Agregar linea\n");
+        printf("3. Eliminar linea\n");
+        printf("4. Guardar cambios\n");
+        printf("5. Cancelar sin guardar\n\n");
+        printf("Seleccione una opcion: ");
+
+        int op = 0;
+        scanf("%d", &op);
+        { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
+        if (op == 1) {
+            int num, nueva;
+            printf("Numero de linea: ");
+            scanf("%d", &num);
+            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            if (num < 1 || num > ped->cantidadDetalles) { printf("Fuera de rango.\n"); continue; }
+            struct DetallePedido* d = ped->detalles[num-1];
+            printf("Cantidad actual: %d\n", d->cantidad);
+            printf("Nueva cantidad: ");
+            scanf("%d", &nueva);
+            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            if (nueva > 0) {
+                d->cantidad = nueva;
+                d->subtotal = d->cantidad * d->precio;
+                printf("Linea actualizada.\n");
+            }
+        }
+        else if (op == 2) {
+            char codigo[20];
+            int cant;
+            printf("Codigo del libro: ");
+            input(codigo, 20);
+            printf("Cantidad: ");
+            scanf("%d", &cant);
+            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            if (cant > 0) {
+                agregarDetallePedido(&ped->detalles, &ped->cantidadDetalles,
+                                     codigo, cant, libros, cantLibros);
+            }
+        }
+        else if (op == 3) {
+            int num;
+            printf("Numero de linea a eliminar: ");
+            scanf("%d", &num);
+            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            eliminarDetallePedido(&ped->detalles, &ped->cantidadDetalles, num);
+        }
+        else if (op == 4) {
+            if (ped->cantidadDetalles == 0) {
+                printf("No se puede guardar un pedido vacio.\n");
+                continue;
+            }
+
+            // Recalcular totales
+            calcularTotalesPedido(ped->detalles, ped->cantidadDetalles,
+                                  &ped->subtotalPedido, &ped->impuesto, &ped->totalPedido);
+
+            // Devolver inventario original
+            for (int i = 0; i < nOriginal; i++) {
+                struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, codigosOriginales[i]);
+                if (lib) lib->cantidad += cantidadesOriginales[i];
+            }
+            // Descontar inventario actual
+            for (int j = 0; j < ped->cantidadDetalles; j++) {
+                struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, ped->detalles[j]->codigoLibro);
+                if (lib) lib->cantidad -= ped->detalles[j]->cantidad;
+            }
+
+            actualizarTodosLibros(libros, &cantLibros);
+            reescribirArchivosPedidos(pedidos, cantPedidos);
+
+            printf("Pedido actualizado correctamente.\n");
+            salir = 1;
+        }
+        else if (op == 5) {
+            printf("Cancelando sin guardar...\n");
+            salir = 1;
+        }
+    }
+
+    // liberar memoria 
+    for (int i = 0; i < nOriginal; i++) free(codigosOriginales[i]);
+    free(codigosOriginales);
+    free(cantidadesOriginales);
+
+    if (libros) {
+        for (int i = 0; i < cantLibros; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
+    }
+
+    if (pedidos) {
+        for (int i = 0; i < cantPedidos; i++) {
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                free(pedidos[i]->detalles[j]->codigoLibro);
+                free(pedidos[i]->detalles[j]->nombreLibro);
+                free(pedidos[i]->detalles[j]);
+            }
+            free(pedidos[i]->detalles);
+            free(pedidos[i]->idPedido);
+            free(pedidos[i]->cedulaCliente);
+            free(pedidos[i]->nombreCliente);
+            free(pedidos[i]->fecha);
+            free(pedidos[i]);
+        }
+        free(pedidos);
+    }
+}
+
+/*
+    Nombre: menuManejoInventario
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Permitir actualizar inventario leyendo un archivo con movimientos.
+        Reescribe el archivo de libros y libera la memoria utilizada.
+*/
 void menuManejoInventario() {
     printf("------- Manejo de inventario -------\n\n");
     printf("Este menu permite modificar la cantidad de libros disponibles, cargando la informacion desde un archivo.\n\n");
@@ -283,15 +648,34 @@ void menuManejoInventario() {
     char *archivo = malloc(100 * sizeof(char));
     input(archivo, 100);
     if (archivo[0] == '\0') {
+        free(archivo);
         return;
     }
 
     int cant;
     struct Libro** libros = cargarLibros(&cant);
     modificarInventario(libros, &cant, archivo);
+    free(archivo);
+    if (libros) {
+        for (int i = 0; i < cant; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
+    }
     return;
 }
 
+/*
+    Nombre: menuEstadisticas
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Mostrar un submenú de reportes (ventas por año/mes, top clientes/libros,
+        autor top por año) usando los datos de pedidos cargados.
+*/
 void menuEstadisticas(void) {
     int cantidadPedidos = 0;
     struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
@@ -352,12 +736,13 @@ void menuEstadisticas(void) {
             if (topN <= 0) topN = 5;
 
             printf("Filtrar por anio (ej: 2025) o ENTER para todos: ");
-            input(anio, sizeof(anio));
+            input(anio, 8);
             if (anio[0] == '\0') {
                 mostrarLibrosMasVendidos(pedidos, cantidadPedidos, NULL, topN);
             } else {
                 mostrarLibrosMasVendidos(pedidos, cantidadPedidos, anio, topN);
             }
+            free(anio);
             printf("Presione ENTER para continuar..."); getchar(); printf("\n");
         }
         else if (opcion == 5) {
@@ -372,8 +757,32 @@ void menuEstadisticas(void) {
             printf("Opcion no valida.\n\n");
         }
     }
+    if (pedidos) {
+        for (int i = 0; i < cantidadPedidos; i++) {
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                free(pedidos[i]->detalles[j]->codigoLibro);
+                free(pedidos[i]->detalles[j]->nombreLibro);
+                free(pedidos[i]->detalles[j]);
+            }
+            free(pedidos[i]->detalles);
+            free(pedidos[i]->idPedido);
+            free(pedidos[i]->cedulaCliente);
+            free(pedidos[i]->nombreCliente);
+            free(pedidos[i]->fecha);
+            free(pedidos[i]);
+        }
+        free(pedidos);
+    }
 }
 
+/*
+    Nombre: menuConsultaPedidos
+    Entrada: puntero a Configuracion
+    Salida: void
+    Objetivo:
+        Listar pedidos y permitir seleccionar uno para ver su comprobante
+        completo (encabezado, detalle y totales).
+*/
 void menuConsultaPedidos(struct Configuracion* config) {
     int cantidadPedidos = 0;
     struct Pedido** pedidos = cargarPedidos(&cantidadPedidos);
@@ -431,8 +840,32 @@ void menuConsultaPedidos(struct Configuracion* config) {
         getchar();
         printf("\n");
     }
+    if (pedidos) {
+        for (int i = 0; i < cantidadPedidos; i++) {
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                free(pedidos[i]->detalles[j]->codigoLibro);
+                free(pedidos[i]->detalles[j]->nombreLibro);
+                free(pedidos[i]->detalles[j]);
+            }
+            free(pedidos[i]->detalles);
+            free(pedidos[i]->idPedido);
+            free(pedidos[i]->cedulaCliente);
+            free(pedidos[i]->nombreCliente);
+            free(pedidos[i]->fecha);
+            free(pedidos[i]);
+        }
+        free(pedidos);
+    }
 }
 
+/*
+    Nombre: menuEliminarLibro
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Solicitar un código, validar que exista y no esté referido por pedidos,
+        y eliminar el libro del catálogo/archivo si procede.
+*/
 void menuEliminarLibro() {
     int cantLibros = 0, cantPedidos = 0;
     struct Libro** libros = cargarLibros(&cantLibros);
@@ -440,6 +873,22 @@ void menuEliminarLibro() {
 
     if (cantLibros == 0) {
         printf("No hay libros para eliminar.\n\n");
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
 
@@ -452,14 +901,102 @@ void menuEliminarLibro() {
 
     if (strlen(codigo) == 0) {
         printf("El codigo no puede estar vacio.\n\n");
+        free(codigo);
+        if (libros) {
+            for (int i = 0; i < cantLibros; i++) {
+                free(libros[i]->codigo);
+                free(libros[i]->nombre);
+                free(libros[i]->autor);
+                free(libros[i]);
+            }
+            free(libros);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
 
     if (!eliminarLibro(&libros, &cantLibros, pedidos, cantPedidos, codigo)) {
+        free(codigo);
+        if (libros) {
+            for (int i = 0; i < cantLibros; i++) {
+                free(libros[i]->codigo);
+                free(libros[i]->nombre);
+                free(libros[i]->autor);
+                free(libros[i]);
+            }
+            free(libros);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
+    }
+
+    free(codigo);
+    if (pedidos) {
+        for (int i = 0; i < cantPedidos; i++) {
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                free(pedidos[i]->detalles[j]->codigoLibro);
+                free(pedidos[i]->detalles[j]->nombreLibro);
+                free(pedidos[i]->detalles[j]);
+            }
+            free(pedidos[i]->detalles);
+            free(pedidos[i]->idPedido);
+            free(pedidos[i]->cedulaCliente);
+            free(pedidos[i]->nombreCliente);
+            free(pedidos[i]->fecha);
+            free(pedidos[i]);
+        }
+        free(pedidos);
+    }
+
+    if (libros) {
+        for (int i = 0; i < cantLibros; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
     }
 }
 
+/*
+    Nombre: menuEliminarCliente
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Solicitar cédula y eliminar al cliente si no tiene pedidos asociados.
+        Maneja la liberación de estructuras en memoria.
+*/
 void menuEliminarCliente() {
     int cantClientes = 0, cantPedidos = 0;
     struct Cliente** clientes = cargarClientes(&cantClientes);
@@ -467,6 +1004,22 @@ void menuEliminarCliente() {
 
     if (cantClientes == 0) {
         printf("No hay clientes para eliminar.\n\n");
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
 
@@ -479,14 +1032,99 @@ void menuEliminarCliente() {
 
     if (strlen(cedula) == 0) {
         printf("La cedula no puede estar vacia.\n\n");
+        free(cedula);
+        if (clientes) {
+            for (int i = 0; i < cantClientes; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
 
     if (!eliminarCliente(&clientes, &cantClientes, pedidos, cantPedidos, cedula)) {
+        free(cedula);
+        if (clientes) {
+            for (int i = 0; i < cantClientes; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
+    }
+    free(cedula);
+    if (clientes) {
+        for (int i = 0; i < cantClientes; i++) {
+            free(clientes[i]->cedula);
+            free(clientes[i]->nombre);
+            free(clientes[i]->telefono);
+            free(clientes[i]);
+        }
+        free(clientes);
+    }
+    if (pedidos) {
+        for (int i = 0; i < cantPedidos; i++) {
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                free(pedidos[i]->detalles[j]->codigoLibro);
+                free(pedidos[i]->detalles[j]->nombreLibro);
+                free(pedidos[i]->detalles[j]);
+            }
+            free(pedidos[i]->detalles);
+            free(pedidos[i]->idPedido);
+            free(pedidos[i]->cedulaCliente);
+            free(pedidos[i]->nombreCliente);
+            free(pedidos[i]->fecha);
+            free(pedidos[i]);
+        }
+        free(pedidos);
     }
 }
 
+/*
+    Nombre: menuLogin
+    Entrada: puntero a Configuracion
+    Salida: true si autenticación válida, false en caso contrario
+    Objetivo:
+        Pedir usuario y contraseña y validar contra la configuración cargada.
+*/
 bool menuLogin(struct Configuracion* config) {
     char *usuario = malloc(30 * sizeof(char));
     char *contrasena = malloc(30 * sizeof(char));
@@ -499,12 +1137,24 @@ bool menuLogin(struct Configuracion* config) {
 
     if (verificarAdmin(usuario, contrasena, config)) {
         printf("Acceso concedido.\n\n");
+        free(usuario);
+        free(contrasena);
         return true;
     }
     printf("Usuario o contraseña incorrectos.\n\n");
+    free(usuario);
+    free(contrasena);
     return false;    
 }
 
+/*
+    Nombre: menuAdministrativo
+    Entrada: puntero a Configuracion
+    Salida: void
+    Objetivo:
+        Mostrar el menú administrativo y despachar a las operaciones de gestión
+        de libros, clientes y pedidos. Recursivo para volver al menú.
+*/
 void menuAdministrativo(struct Configuracion* config) {
     printf("------- Menu Administrativo -------\n\n");
     printf("1. Registrar libros\n");
@@ -545,6 +1195,7 @@ void menuAdministrativo(struct Configuracion* config) {
             menuCrearPedido(config);
             break;
         case 7:
+            menuModificarPedido(config);
             break;
         case 8:
             menuEliminarPedido();
@@ -565,12 +1216,20 @@ void menuAdministrativo(struct Configuracion* config) {
     menuAdministrativo(config);
 }
 
+/*
+    Nombre: menuMostrarCatalogo
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Cargar y mostrar en consola el catálogo de libros con sus datos.
+*/
 void menuMostrarCatalogo() {
     int cant;
     struct Libro** libros = cargarLibros(&cant);
     printf("------- Catalogo -------\n\n");
     if (cant == 0) {
         printf("No hay libros disponibles.\n\n");
+        if (libros) free(libros);
         return;
     }
     for (int i = 0; i < cant; i++) {
@@ -582,8 +1241,25 @@ void menuMostrarCatalogo() {
         printf("Cantidad: %d\n", libros[i]->cantidad);
         printf("------------------\n\n");
     }
+    if (libros) {
+        for (int i = 0; i < cant; i++) {
+            free(libros[i]->codigo);
+            free(libros[i]->nombre);
+            free(libros[i]->autor);
+            free(libros[i]);
+        }
+        free(libros);
+    }
 }
 
+/*
+    Nombre: menuConsultaCliente
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Pedir cédula, mostrar datos del cliente y listar sus pedidos
+        (con cantidad de libros por pedido).
+*/
 void menuConsultaCliente() {
     int cantidadClientes = 0, cantidadPedidos = 0;
     struct Cliente** clientes = cargarClientes(&cantidadClientes);
@@ -599,6 +1275,32 @@ void menuConsultaCliente() {
 
     if (strlen(cedula) == 0) {
         printf("La cedula no puede estar vacía.\n\n");
+        free(cedula);
+        if (clientes) {
+            for (int i = 0; i < cantidadClientes; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantidadPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
 
@@ -606,6 +1308,32 @@ void menuConsultaCliente() {
     struct Cliente* cliente = buscarClientePorCedula(clientes, cantidadClientes, cedula);
     if (cliente == NULL) {
         printf("Cliente no encontrado.\n\n");
+        free(cedula);
+        if (clientes) {
+            for (int i = 0; i < cantidadClientes; i++) {
+                free(clientes[i]->cedula);
+                free(clientes[i]->nombre);
+                free(clientes[i]->telefono);
+                free(clientes[i]);
+            }
+            free(clientes);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantidadPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
 
@@ -643,8 +1371,43 @@ void menuConsultaCliente() {
         printf("El cliente no tiene pedidos registrados.\n");
     }
     printf("\n");
+
+    free(cedula);
+    if (clientes) {
+        for (int i = 0; i < cantidadClientes; i++) {
+            free(clientes[i]->cedula);
+            free(clientes[i]->nombre);
+            free(clientes[i]->telefono);
+            free(clientes[i]);
+        }
+        free(clientes);
+    }
+    if (pedidos) {
+        for (int i = 0; i < cantidadPedidos; i++) {
+            for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                free(pedidos[i]->detalles[j]->codigoLibro);
+                free(pedidos[i]->detalles[j]->nombreLibro);
+                free(pedidos[i]->detalles[j]);
+            }
+            free(pedidos[i]->detalles);
+            free(pedidos[i]->idPedido);
+            free(pedidos[i]->cedulaCliente);
+            free(pedidos[i]->nombreCliente);
+            free(pedidos[i]->fecha);
+            free(pedidos[i]);
+        }
+        free(pedidos);
+    }
 }
 
+/*
+    Nombre: menuOpcionesPrincipales
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Submenú de opciones públicas: ver catálogo y consultar cliente.
+        Vuelve a llamarse recursivamente para permanecer en el menú.
+*/
 void menuOpcionesPrincipales() {
     printf("------- Opciones Principales -------\n\n");
     printf("1. Consulta de catalogo\n");
@@ -674,6 +1437,15 @@ void menuOpcionesPrincipales() {
     menuOpcionesPrincipales();
 }
 
+/*
+    Nombre: menuPrincipal
+    Entrada: ninguna
+    Salida: void
+    Objetivo:
+        Cargar configuración, presentar el menú principal y despachar hacia
+        el menú administrativo (con login) o las opciones principales.
+        Maneja la liberación de la configuración al salir de cada ciclo.
+*/
 void menuPrincipal() {
     struct Configuracion* config = cargarConfiguracion();
     if (!config) {
@@ -715,5 +1487,3 @@ void menuPrincipal() {
     liberarConfiguracion(config);
     menuPrincipal();
 }
-
-

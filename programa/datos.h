@@ -12,6 +12,7 @@
 #define PEDIDOS_TXT "pedidos.txt"
 #define DETALLES_TXT "detalles.txt"
 
+// Auxiliares
 char** leerArchivo(char*, int*);
 bool verificarAdmin(char*, char*, struct Configuracion*);
 char** separarTexto(char*, char, int);
@@ -26,7 +27,7 @@ bool eliminarLibro(struct Libro*** libros, int* cantLibros, struct Pedido** pedi
 
 // Clientes
 struct Cliente** cargarClientes(int*);
-bool registrarCliente(struct Cliente**, struct Cliente*, int);
+struct Cliente** registrarCliente(struct Cliente**, struct Cliente*, int*);
 void actualizarTodosClientes(struct Cliente**, int*);
 int validarTelefono(char* telefono);
 int existeCedula(struct Cliente**, int, char*);
@@ -45,6 +46,7 @@ void mostrarDetallePedido(struct DetallePedido**, int);
 void mostrarPedidoCompleto(struct Pedido*, struct Configuracion*);
 struct Pedido** cargarPedidos(int*);
 struct DetallePedido** cargarDetallesPorPedido(char*, int*);
+bool reescribirArchivosPedidos(struct Pedido** pedidos, int cantidadPedidos);
 
 // Estadisticas 
 void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos);
@@ -52,6 +54,7 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
 void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const char* anio, int topN);
 void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos);
 void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos);
+
 #endif
 
 

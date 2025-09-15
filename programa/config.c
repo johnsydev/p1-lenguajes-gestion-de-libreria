@@ -5,9 +5,25 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+    Constante: CONFIG_FILE
+    Entrada: N/A
+    Salida: N/A
+    Objetivo:
+        Definir el nombre del archivo JSON de configuración que se leerá/escribirá
+        para cargar y persistir los datos de configuración de la aplicación.
+*/
 #define CONFIG_FILE "config.json"
 
-// Función auxiliar para extraer valor JSON simple
+/*
+    Nombre: extraerValorJSON
+    Entrada: linea (const char*), clave (const char*)
+    Salida: char* (cadena asignada dinámicamente con el valor; NULL si no se encuentra)
+    Objetivo:
+        Buscar en una línea de texto con formato JSON simple la clave indicada y
+        extraer su valor de tipo string (entre comillas). Devuelve una nueva cadena
+        con el contenido encontrado; el llamador debe liberar la memoria.
+*/
 static char* extraerValorJSON(const char* linea, const char* clave) {
     char* inicio = strstr(linea, clave);
     if (!inicio) {
@@ -44,6 +60,14 @@ static char* extraerValorJSON(const char* linea, const char* clave) {
     return valor;
 }
 
+/*
+    Nombre: extraerEnteroJSON
+    Entrada: linea (const char*), clave (const char*)
+    Salida: int (valor entero; 0 si no se encuentra o no se puede interpretar)
+    Objetivo:
+        Localizar una clave en una línea JSON simple y convertir el valor numérico
+        asociado a un entero usando atoi. Está pensado para claves numéricas simples.
+*/
 static int extraerEnteroJSON(const char* linea, const char* clave) {
     char* inicio = strstr(linea, clave);
     if (!inicio) {
@@ -62,6 +86,16 @@ static int extraerEnteroJSON(const char* linea, const char* clave) {
     return atoi(inicio);
 }
 
+/*
+    Nombre: cargarConfiguracion
+    Entrada: ninguna
+    Salida: struct Configuracion* (puntero a configuración cargada; NULL si falla)
+    Objetivo:
+        Abrir el archivo de configuración JSON, leerlo línea por línea y extraer
+        los valores de las distintas claves. Inicializa por defecto algunos campos
+        y devuelve una estructura con memoria asignada dinámicamente.
+        El llamador debe liberar la configuración con liberarConfiguracion().
+*/
 struct Configuracion* cargarConfiguracion() {
     FILE* archivo = fopen(CONFIG_FILE, "r");
     if (!archivo) {
@@ -109,6 +143,14 @@ struct Configuracion* cargarConfiguracion() {
     return config;
 }
 
+/*
+    Nombre: liberarConfiguracion
+    Entrada: config (struct Configuracion*)
+    Salida: void
+    Objetivo:
+        Liberar toda la memoria asociada a la estructura de configuración,
+        incluyendo las cadenas asignadas dinámicamente y la propia estructura.
+*/
 void liberarConfiguracion(struct Configuracion* config) {
     if (!config){
         return;
@@ -123,6 +165,14 @@ void liberarConfiguracion(struct Configuracion* config) {
     free(config);
 }
 
+/*
+    Nombre: guardarConfiguracion
+    Entrada: config (struct Configuracion*)
+    Salida: void
+    Objetivo:
+        Persistir en disco el contenido de la configuración en formato JSON
+        sencillo, escribiendo cada clave/valor en CONFIG_FILE.
+*/
 void guardarConfiguracion(struct Configuracion* config) {
     if (!config) {
         return;
@@ -147,6 +197,15 @@ void guardarConfiguracion(struct Configuracion* config) {
     fclose(archivo);
 }
 
+/*
+    Nombre: generarIdPedidoSecuencial
+    Entrada: config (struct Configuracion*)
+    Salida: char* (ID generado como cadena; el llamador debe liberar)
+    Objetivo:
+        Construir un identificador de pedido a partir del contador secuencial
+        almacenado en la configuración. Incrementa el contador, guarda la
+        configuración y devuelve el ID formateado como texto.
+*/
 char* generarIdPedidoSecuencial(struct Configuracion* config) {
     char* id = malloc(TAM_ID_PEDIDO * sizeof(char));
     snprintf(id, TAM_ID_PEDIDO, "%d", config->secuencialPedido);

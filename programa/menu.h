@@ -10,7 +10,7 @@ bool menuLogin(struct Configuracion* config);
 void menuEstadisticas();
 void menuPrincipal();
 void menuAdministrativo(struct Configuracion* config);
-void menuOpcionesPrincipales(); //sin autenticación
+void menuOpcionesPrincipales(); 
 
 void menuRegistrarLibro();
 void menuEliminarLibro();
@@ -18,6 +18,7 @@ void menuRegistrarCliente();
 void menuEliminarCliente();
 void menuCrearPedido(struct Configuracion* config);
 void menuEliminarPedido();
+void menuModificarPedido(struct Configuracion* config);
 
 void menuMostrarCatalogo();
 void menuConsultaCliente();

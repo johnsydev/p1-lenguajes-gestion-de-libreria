@@ -11,15 +11,26 @@
 #include <stdbool.h>
 #include <time.h>
 
-// CLIENTES
+/* -------------------------------------------------------------------------- */
+/*                               SECCIÓN CLIENTES                              */
+/* -------------------------------------------------------------------------- */
+
+/*
+    Nombre: cargarClientes
+    Entrada: puntero a int cant (salida por referencia)
+    Salida: arreglo dinámico de punteros a struct Cliente (struct Cliente**)
+    Objetivo:
+        Leer CLIENTES_TXT y construir en memoria un arreglo de clientes.
+        Cada línea del archivo tiene el formato "cedula;nombre;telefono".
+*/
 struct Cliente** cargarClientes(int* cant) {
     int cantidadLineas;
     char** clientesTxt = leerArchivo(CLIENTES_TXT, &cantidadLineas);
-    struct Cliente** clientes = malloc(cantidadLineas * sizeof(struct Cliente*));
     if (clientesTxt == NULL) {
         *cant = 0;
         return NULL;
     }
+    struct Cliente** clientes = malloc(cantidadLineas * sizeof(struct Cliente*));
     for (int i = 0; i < cantidadLineas; i++) {
         char** info = separarTexto(clientesTxt[i], ';', 3);
         struct Cliente* cliente = malloc(sizeof(struct Cliente));
@@ -29,11 +40,20 @@ struct Cliente** cargarClientes(int* cant) {
         clientes[i] = cliente;
         for (int j = 0; j < 3; j++) free(info[j]);
         free(info);
+        free(clientesTxt[i]);
     }
     *cant = cantidadLineas;
+    free(clientesTxt);
     return clientes;
 }
 
+/*
+    Nombre: existeCedula
+    Entrada: arreglo de clientes, cantidad, cedula a buscar
+    Salida: 1 si existe, 0 si no
+    Objetivo:
+        Verificar existencia de una cédula en el arreglo de clientes.
+*/
 int existeCedula(struct Cliente** clientes, int cantidad, char* cedula) {
     for (int i = 0; i < cantidad; i++) {
         if (compararString(clientes[i]->cedula, cedula)) {
@@ -43,6 +63,13 @@ int existeCedula(struct Cliente** clientes, int cantidad, char* cedula) {
     return 0;
 }
 
+/*
+    Nombre: validarTelefono
+    Entrada: string teléfono
+    Salida: 1 si es válido (>=7 dígitos y solo números), 0 si no
+    Objetivo:
+        Validar formato básico de un teléfono numérico.
+*/
 int validarTelefono(char* telefono) {
     int len = strlen(telefono);
     if (len < 7) {
@@ -56,33 +83,56 @@ int validarTelefono(char* telefono) {
     return 1;
 }
 
-bool registrarCliente(struct Cliente** listaClientes, struct Cliente* cliente, int cantidadClientes) {
-    for (int i = 0; i < cantidadClientes; i++) {
+/*
+    Nombre: registrarCliente
+    Entrada: arreglo de clientes (puntero), cliente a agregar, puntero a cantidad
+    Salida: NUEVO puntero al arreglo de clientes (struct Cliente**)
+    Objetivo:
+        Registrar un cliente nuevo. Verifica duplicados por cédula, persiste en
+        archivo y devuelve (posible) nuevo puntero si hubo realloc. El caller debe
+        asignar el valor retornado al arreglo original.
+*/
+struct Cliente** registrarCliente(struct Cliente** listaClientes, struct Cliente* cliente, int* cantidadClientes) {
+    for (int i = 0; i < *cantidadClientes; i++) {
         if (compararString(listaClientes[i]->cedula, cliente->cedula)) {
             printf("Error: Ya existe un cliente con esa cedula.\n\n");
-            return false;
+            return listaClientes;
         }
     }
 
-    listaClientes = (struct Cliente**)realloc(listaClientes, (cantidadClientes + 1) * sizeof(struct Cliente*));
-    if (listaClientes == NULL) {
-        return false;
+    struct Cliente** nuevo = (struct Cliente**)realloc(listaClientes, (*cantidadClientes + 1) * sizeof(struct Cliente*));
+    if (nuevo == NULL) {
+        printf("Error: Memoria insuficiente al agregar cliente.\n\n");
+        return listaClientes; // devolvemos el puntero viejo sin cambios
     }
-    listaClientes[cantidadClientes] = cliente;
-    cantidadClientes++;
+    nuevo[*cantidadClientes] = cliente;
+    (*cantidadClientes)++;
 
     FILE *archivo = fopen(CLIENTES_TXT, "a");
-    if (cantidadClientes == 1) {
+    if (archivo == NULL) {
+        perror("fopen CLIENTES_TXT (append)");
+        return nuevo; 
+    }
+
+    if (*cantidadClientes == 1) {
         fprintf(archivo, "%s;%s;%s", cliente->cedula, cliente->nombre, cliente->telefono);
     } else {
         fprintf(archivo, "\n%s;%s;%s", cliente->cedula, cliente->nombre, cliente->telefono);
     }
     fclose(archivo);
-    return true;
+    return nuevo;
 }
 
+/*
+    Nombre: actualizarTodosClientes
+    Entrada: arreglo de clientes y puntero a cantidad
+    Salida: void
+    Objetivo:
+        Reescribir completamente CLIENTES_TXT con el contenido en memoria.
+*/
 void actualizarTodosClientes(struct Cliente** clientes, int* cantidadClientes) {
     FILE *archivo = fopen(CLIENTES_TXT, "w");
+    if (!archivo) { perror("fopen CLIENTES_TXT (write)"); return; }
     for (int i = 0; i < *cantidadClientes; i++) {
         if (i == 0) {
             fprintf(archivo, "%s;%s;%s", clientes[i]->cedula, clientes[i]->nombre, clientes[i]->telefono);
@@ -93,6 +143,13 @@ void actualizarTodosClientes(struct Cliente** clientes, int* cantidadClientes) {
     fclose(archivo);
 }
 
+/*
+    Nombre: buscarIndiceCliente
+    Entrada: arreglo de clientes, cantidad, cédula
+    Salida: índice del cliente o -1 si no se encuentra
+    Objetivo:
+        Ubicar el índice de un cliente dado su número de cédula.
+*/
 static int buscarIndiceCliente(struct Cliente** clientes, int cantClientes, const char* cedula) {
     for (int i = 0; i < cantClientes; i++) {
         if (compararString(clientes[i]->cedula, (char*)cedula)) return i;
@@ -100,6 +157,13 @@ static int buscarIndiceCliente(struct Cliente** clientes, int cantClientes, cons
     return -1;
 }
 
+/*
+    Nombre: tienePedidosCliente
+    Entrada: arreglo de pedidos, cantidad de pedidos, cédula
+    Salida: true si hay pedidos asociados, false si no
+    Objetivo:
+        Verificar si un cliente posee pedidos registrados.
+*/
 bool tienePedidosCliente(struct Pedido** pedidos, int cantPedidos, const char* cedula) {
     for (int i = 0; i < cantPedidos; i++) {
         if (compararString(pedidos[i]->cedulaCliente, (char*)cedula)) {
@@ -109,6 +173,15 @@ bool tienePedidosCliente(struct Pedido** pedidos, int cantPedidos, const char* c
     return false;
 }
 
+/*
+    Nombre: eliminarCliente
+    Entrada: triple puntero a clientes (para poder realloc), puntero a cantidad,
+             arreglo de pedidos y su cantidad, cédula a eliminar
+    Salida: true si se eliminó, false en caso contrario
+    Objetivo:
+        Eliminar un cliente sin pedidos asociados, compactar memoria y reescribir
+        archivo de clientes.
+*/
 bool eliminarCliente(struct Cliente*** clientes, int* cantClientes,
                      struct Pedido** pedidos, int cantPedidos,
                      const char* cedula) {
@@ -128,8 +201,11 @@ bool eliminarCliente(struct Cliente*** clientes, int* cantClientes,
         return false;
     }
 
-    // liberar nodo y compactar
+    free((*clientes)[ind]->cedula);
+    free((*clientes)[ind]->nombre);
+    free((*clientes)[ind]->telefono);
     free((*clientes)[ind]);
+
     for (int i = ind; i < (*cantClientes) - 1; i++) {
         (*clientes)[i] = (*clientes)[i + 1];
     }
@@ -147,6 +223,10 @@ bool eliminarCliente(struct Cliente*** clientes, int* cantClientes,
     printf("Cliente eliminado correctamente.\n\n");
     return true;
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   AUX                                      */
+/* -------------------------------------------------------------------------- */
 
 /*
     Nombre: leerArchivo
@@ -166,6 +246,7 @@ char** leerArchivo(char* nombreArchivo, int* cantidadLineas) {
     if (archivo == NULL) {
         *cantidadLineas = 0;
         printf("Error al abrir el archivo.\n\n");
+        free(linea);
         return NULL;
     }
 
@@ -178,11 +259,18 @@ char** leerArchivo(char* nombreArchivo, int* cantidadLineas) {
     }
 
     fclose(archivo);
+    free(linea);
     *cantidadLineas = cantidad;
     return lineas;
 }
 
-
+/*
+    Nombre: verificarAdmin
+    Entrada: usuario, contraseña, puntero a Configuracion
+    Salida: true si coincide user/pass, false si no
+    Objetivo:
+        Validar credenciales de administrador contra la configuración cargada.
+*/
 bool verificarAdmin(char* usuario, char* contrasena, struct Configuracion* config) {
     if (!config) { 
         return false;
@@ -209,7 +297,7 @@ char** separarTexto(char* texto, char delimitador, int cantidad) {
     int indiceTexto = 0;
     int indiceTemp = 0;
     while (texto[indiceTexto] != '\0') {
-        if (texto[indiceTexto] == ';') {
+        if (texto[indiceTexto] == delimitador) {
             indiceTexto++;
             temp[indiceTemp] = '\0';
             array[indiceArray] = (char*)malloc(strlen(temp) + 1);
@@ -226,21 +314,30 @@ char** separarTexto(char* texto, char delimitador, int cantidad) {
     temp[indiceTemp] = '\0';
     array[indiceArray] = (char*)malloc(strlen(temp) + 1);
     copiarString(array[indiceArray], temp);
+    free(temp);
     return array;
-};
+}
 
+/* -------------------------------------------------------------------------- */
+/*                              GESTIÓN DE LIBROS                              */
+/* -------------------------------------------------------------------------- */
 
-/* GESTION DE LIBROS */
-
+/*
+    Nombre: cargarLibros
+    Entrada: puntero a int cant (salida por referencia)
+    Salida: arreglo dinámico de punteros a struct Libro (struct Libro**)
+    Objetivo:
+        Leer "libros.txt" y construir el arreglo de libros en memoria.
+*/
 struct Libro** cargarLibros(int* cant) {
     int cantidadLineas;
     char** librosTxt = leerArchivo("libros.txt", &cantidadLineas);
-    struct Libro** libros = malloc(cantidadLineas * sizeof(struct Libro*));
-
     if (librosTxt == NULL) {
+        *cant = 0;
         printf("Error al leer el archivo.\n");
         return NULL;
     }
+    struct Libro** libros = malloc(cantidadLineas * sizeof(struct Libro*));
     
     for (int i = 0; i < cantidadLineas; i++) {
         char** info = separarTexto(librosTxt[i], ';', 5);
@@ -254,42 +351,58 @@ struct Libro** cargarLibros(int* cant) {
 
         for (int j = 0; j < 5; j++) free(info[j]);
         free(info);
+        free(librosTxt[i]);
     }
+    free(librosTxt);
     *cant = cantidadLineas;
     return libros;
 }
 
-
+/*
+    Nombre: registrarLibro
+    Entrada: arreglo de libros (puntero), libro a agregar, cantidad actual
+    Salida: true si persiste en archivo, false si falla o hay duplicado
+    Objetivo:
+        Registrar un libro nuevo en archivo (sin modificar el arreglo en memoria).
+        Verifica código duplicado.
+*/
 bool registrarLibro(struct Libro** listaLibros, struct Libro* libro, int cantidadLibros) {
     for (int i = 0; i < cantidadLibros; i++) {
-        if (strcmp(listaLibros[i]->codigo, libro->codigo) == 0) {
+        if (compararString(listaLibros[i]->codigo, libro->codigo)) {
             printf("Error: Ya existe un libro con ese codigo.\n\n");
             return false;
         }
     }
 
-    listaLibros = (struct Libro**)realloc(listaLibros, (cantidadLibros + 1) * sizeof(struct Libro*));
-    if (listaLibros == NULL) {
+    FILE *archivo = fopen("libros.txt", "a");
+    if (archivo == NULL) {
+        perror("fopen libros.txt (append)");
         return false;
     }
-    listaLibros[cantidadLibros] = libro;
-    cantidadLibros++;
-
-    FILE *archivo = fopen("libros.txt", "a");
-    if (cantidadLibros == 1) {
+    if (cantidadLibros == 0) {
         fprintf(archivo, "%s;%s;%s;%.2f;%d", libro->codigo, libro->nombre, libro->autor, libro->precio, libro->cantidad);
+    } else {
+        fprintf(archivo, "\n%s;%s;%s;%.2f;%d", libro->codigo, libro->nombre, libro->autor, libro->precio, libro->cantidad);
     }
-    fprintf(archivo, "\n%s;%s;%s;%.2f;%d", libro->codigo, libro->nombre, libro->autor, libro->precio, libro->cantidad);
     fclose(archivo);
 
     return true;
 }
 
+/*
+    Nombre: actualizarTodosLibros
+    Entrada: arreglo de libros y puntero a cantidad
+    Salida: void
+    Objetivo:
+        Reescribir completamente "libros.txt" con el stock y datos actuales.
+*/
 void actualizarTodosLibros(struct Libro** libros, int* cantidadLibros) {
     FILE *limpiar = fopen("libros.txt", "w");
+    if (!limpiar) { perror("fopen libros.txt (truncate)"); return; }
     fclose(limpiar);
 
     FILE *archivo = fopen("libros.txt", "a");
+    if (!archivo) { perror("fopen libros.txt (append after truncate)"); return; }
 
     for (int i = 0; i < *cantidadLibros; i++)
     {
@@ -303,6 +416,14 @@ void actualizarTodosLibros(struct Libro** libros, int* cantidadLibros) {
     fclose(archivo);
 }
 
+/*
+    Nombre: modificarInventario
+    Entrada: arreglo de libros, puntero a cantidad, nombre de archivo de movimientos
+    Salida: true si se procesa y persiste, false si falla la lectura
+    Objetivo:
+        Aplicar movimientos de inventario desde un archivo "codigo;delta".
+        No permite stock negativo. Luego reescribe "libros.txt".
+*/
 bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archivo) {
     int cantidadLineas;
     char** contenido = leerArchivo(archivo, &cantidadLineas);
@@ -315,7 +436,7 @@ bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archi
         for (int j = 0; j < *cantidadLibros; j++) {
             if (compararString(libros[j]->codigo, info[0]) == true) {
                 int count = libros[j]->cantidad + atoi(info[1]);
-                if (count > 0) {
+                if (count >= 0) {
                     libros[j]->cantidad = count;
                 }
                 else {
@@ -323,12 +444,24 @@ bool modificarInventario(struct Libro** libros, int* cantidadLibros, char* archi
                 }
             }
         }
+        free(info[0]);
+        free(info[1]);
+        free(info);
+        free(contenido[i]);
     }
+    free(contenido);
     printf("\n");
     actualizarTodosLibros(libros, cantidadLibros);
     return true;
 }
 
+/*
+    Nombre: tienePedidosLibro
+    Entrada: arreglo de pedidos, cantidad de pedidos, código de libro
+    Salida: true si el libro aparece en algún pedido, false si no
+    Objetivo:
+        Verificar si un libro está referenciado en pedidos (para evitar borrado).
+*/
 bool tienePedidosLibro(struct Pedido** pedidos, int cantPedidos, const char* codigoLibro) {
     for (int i = 0; i < cantPedidos; i++) {
         for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
@@ -340,6 +473,13 @@ bool tienePedidosLibro(struct Pedido** pedidos, int cantPedidos, const char* cod
     return false;
 }
 
+/*
+    Nombre: buscarIndiceLibro
+    Entrada: arreglo de libros, cantidad, código
+    Salida: índice o -1
+    Objetivo:
+        Encontrar el índice de un libro por su código.
+*/
 static int buscarIndiceLibro(struct Libro** libros, int cantLibros, const char* codigo) {
     for (int i = 0; i < cantLibros; i++) {
         if (compararString(libros[i]->codigo, (char*)codigo)) return i;
@@ -347,6 +487,15 @@ static int buscarIndiceLibro(struct Libro** libros, int cantLibros, const char* 
     return -1;
 }
 
+/*
+    Nombre: eliminarLibro
+    Entrada: triple puntero a libros (para poder realloc), puntero a cantidad,
+             arreglo de pedidos y su cantidad, código de libro a eliminar
+    Salida: true si se elimina, false si no
+    Objetivo:
+        Eliminar un libro que no aparezca en pedidos, compactar memoria y
+        reescribir "libros.txt".
+*/
 bool eliminarLibro(struct Libro*** libros, int* cantLibros,
                    struct Pedido** pedidos, int cantPedidos,
                    const char* codigoLibro) {
@@ -367,6 +516,9 @@ bool eliminarLibro(struct Libro*** libros, int* cantLibros,
     }
 
     // liberar nodo y compactar
+    free((*libros)[ind]->codigo);
+    free((*libros)[ind]->nombre);
+    free((*libros)[ind]->autor);
     free((*libros)[ind]);
     for (int i = ind; i < (*cantLibros) - 1; i++) {
         (*libros)[i] = (*libros)[i + 1];
@@ -386,7 +538,17 @@ bool eliminarLibro(struct Libro*** libros, int* cantLibros,
     return true;
 }
 
-// PEDIDOS
+/* -------------------------------------------------------------------------- */
+/*                                  PEDIDOS                                   */
+/* -------------------------------------------------------------------------- */
+
+/*
+    Nombre: buscarLibroPorCodigo
+    Entrada: arreglo de libros, cantidad, código
+    Salida: puntero al libro o NULL
+    Objetivo:
+        Retornar el libro cuyo código coincida exactamente.
+*/
 struct Libro* buscarLibroPorCodigo(struct Libro** libros, int cantidad, char* codigo) {
     for (int i = 0; i < cantidad; i++) {
         if (compararString(libros[i]->codigo, codigo)) {
@@ -396,6 +558,13 @@ struct Libro* buscarLibroPorCodigo(struct Libro** libros, int cantidad, char* co
     return NULL;
 }
 
+/*
+    Nombre: buscarClientePorCedula
+    Entrada: arreglo de clientes, cantidad, cédula
+    Salida: puntero al cliente o NULL
+    Objetivo:
+        Retornar el cliente cuya cédula coincida exactamente.
+*/
 struct Cliente* buscarClientePorCedula(struct Cliente** clientes, int cantidad, char* cedula) {
     for (int i = 0; i < cantidad; i++) {
         if (compararString(clientes[i]->cedula, cedula)) {
@@ -405,6 +574,15 @@ struct Cliente* buscarClientePorCedula(struct Cliente** clientes, int cantidad, 
     return NULL;
 }
 
+/*
+    Nombre: agregarDetallePedido
+    Entrada: triple puntero a detalles (puede realloc), puntero a cantidad,
+             código de libro, cantidad solicitada, arreglo de libros y su cantidad
+    Salida: true si agrega/actualiza, false si hay error (stock o código)
+    Objetivo:
+        Agregar un renglón al detalle del pedido o actualizar cantidad si ya existe,
+        validando stock disponible.
+*/
 bool agregarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalles, char* codigoLibro, int cantidad, struct Libro** libros, int cantLibros) {
     struct Libro* libro = buscarLibroPorCodigo(libros, cantLibros, codigoLibro);
     if (libro == NULL) {
@@ -446,6 +624,13 @@ bool agregarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalle
     return true;
 }
 
+/*
+    Nombre: eliminarDetallePedido
+    Entrada: triple puntero a detalles, puntero a cantidad de detalles, número de línea (1-based)
+    Salida: true si elimina, false si índice inválido
+    Objetivo:
+        Eliminar una línea del detalle de pedido, compactar el arreglo y ajustar tamaño.
+*/
 bool eliminarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalles, int numeroLinea) {
     if (numeroLinea < 1 || numeroLinea > *cantidadDetalles) {
         printf("Error: Numero de linea invalido.\n\n");
@@ -453,6 +638,8 @@ bool eliminarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetall
     }
     
     int indice = numeroLinea - 1;
+    free((*detalles)[indice]->codigoLibro);
+    free((*detalles)[indice]->nombreLibro);
     free((*detalles)[indice]);
     
     for (int i = indice; i < *cantidadDetalles - 1; i++) {
@@ -466,6 +653,13 @@ bool eliminarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetall
     return true;
 }
 
+/*
+    Nombre: calcularTotalesPedido
+    Entrada: arreglo de detalles, cantidad de detalles, punteros a subtotal, impuesto y total
+    Salida: llena los valores por referencia
+    Objetivo:
+        Calcular subtotal (suma de subtotales), impuesto (por IMPUESTO_VENTA) y total.
+*/
 void calcularTotalesPedido(struct DetallePedido** detalles, int cantidadDetalles, float* subtotal, float* impuesto, float* total) {
     *subtotal = 0;
     for (int i = 0; i < cantidadDetalles; i++) {
@@ -475,6 +669,15 @@ void calcularTotalesPedido(struct DetallePedido** detalles, int cantidadDetalles
     *total = *subtotal + *impuesto;
 }
 
+/*
+    Nombre: eliminarPedido
+    Entrada: triple puntero a pedidos (para poder realloc), puntero a cantidad,
+             id de pedido a eliminar
+    Salida: true si elimina y reescribe archivos, false si falla
+    Objetivo:
+        Eliminar un pedido, restaurar stock de libros, compactar memoria y
+        reescribir PEDIDOS_TXT y DETALLES_TXT.
+*/
 bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* idPedido) {
     if (pedidos == NULL || *pedidos == NULL || *cantidadPedidos <= 0) {
         printf("No hay pedidos cargados.\n\n");
@@ -560,6 +763,8 @@ bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* 
             }
         }
         fclose(archivoPedidos);
+    } else {
+        perror("fopen PEDIDOS_TXT (write)");
     }
 
     // Actualizar archivo de detalles
@@ -583,6 +788,8 @@ bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* 
             }
         }
         fclose(archivoDetalles);
+    } else {
+        perror("fopen DETALLES_TXT (write)");
     }
 
     // Liberar memoria de libros
@@ -600,6 +807,13 @@ bool eliminarPedido(struct Pedido*** pedidos, int* cantidadPedidos, const char* 
     return true;
 }
 
+/*
+    Nombre: mostrarDetallePedido
+    Entrada: arreglo de detalles, cantidad
+    Salida: void
+    Objetivo:
+        Imprimir en consola el detalle (líneas) de un pedido.
+*/
 void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles) {
     if (cantidadDetalles == 0) {
         printf("No hay lineas en el pedido.\n\n");
@@ -622,6 +836,15 @@ void mostrarDetallePedido(struct DetallePedido** detalles, int cantidadDetalles)
     printf("\n");
 }
 
+/*
+    Nombre: generarPedido
+    Entrada: puntero a Pedido (completo), arreglo de libros y su cantidad,
+             puntero a Configuracion
+    Salida: true si persiste encabezado y detalles, false si falla
+    Objetivo:
+        Generar un ID secuencial, descontar stock, actualizar "libros.txt" y
+        guardar encabezado en PEDIDOS_TXT y renglones en DETALLES_TXT.
+*/
 bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros, struct Configuracion* config) {
     // Generar ID secuencial
     char* idGenerado = generarIdPedidoSecuencial(config);
@@ -668,6 +891,13 @@ bool generarPedido(struct Pedido* pedido, struct Libro** libros, int* cantLibros
     return true;
 }
 
+/*
+    Nombre: mostrarPedidoCompleto
+    Entrada: puntero a Pedido y puntero a Configuracion
+    Salida: void
+    Objetivo:
+        Imprimir encabezado del pedido, líneas y totales con los datos del local.
+*/
 void mostrarPedidoCompleto(struct Pedido* pedido, struct Configuracion* config) {
     printf("\n");
     printf("===============================================\n");
@@ -693,6 +923,13 @@ void mostrarPedidoCompleto(struct Pedido* pedido, struct Configuracion* config) 
     printf("===============================================\n\n");
 }
 
+/*
+    Nombre: cargarPedidos
+    Entrada: puntero a int cant (salida por referencia)
+    Salida: arreglo de punteros a Pedido
+    Objetivo:
+        Leer PEDIDOS_TXT y construir cada pedido con sus detalles desde archivo.
+*/
 struct Pedido** cargarPedidos(int* cant) {
     int cantidadLineas;
     char** pedidosTxt = leerArchivo(PEDIDOS_TXT, &cantidadLineas);
@@ -723,12 +960,20 @@ struct Pedido** cargarPedidos(int* cant) {
         
         for (int j = 0; j < 7; j++) free(info[j]);
         free(info);
+        free(pedidosTxt[i]);
     }
-    
     *cant = cantidadLineas;
+    free(pedidosTxt);
     return pedidos;
 }
 
+/*
+    Nombre: cargarDetallesPorPedido
+    Entrada: id de pedido, puntero a int cant (salida por referencia)
+    Salida: arreglo de punteros a DetallePedido
+    Objetivo:
+        Leer DETALLES_TXT y retornar únicamente los detalles pertenecientes al id dado.
+*/
 struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
     int cantidadLineas;
     char** detallesTxt = leerArchivo(DETALLES_TXT, &cantidadLineas);
@@ -760,16 +1005,97 @@ struct DetallePedido** cargarDetallesPorPedido(char* idPedido, int* cant) {
         
         for (int j = 0; j < 6; j++) free(info[j]);
         free(info);
+        free(detallesTxt[i]);
     }
     
     *cant = cantidadDetalles;
+    free(detallesTxt);
     return detalles;
 }
 
-// Estadisticas
+/*
+    Nombre: buscarIndicePedido
+    Entrada: arreglo de pedidos, cantidad, id a buscar
+    Salida: índice o -1
+    Objetivo:
+        Devolver el índice de un pedido según su id.
+*/
+static int buscarIndicePedido(struct Pedido** pedidos, int cant, const char* id) {
+    for (int i = 0; i < cant; i++) {
+        if (compararString(pedidos[i]->idPedido, (char*)id)) {
+            return i;
+        }
+    }
+    return -1;
+}
 
+/*
+    Nombre: reescribirArchivosPedidos
+    Entrada: arreglo de pedidos en memoria, cantidad
+    Salida: true si ambos archivos se reescriben, false si ocurre un error
+    Objetivo:
+        Reescribir por completo PEDIDOS_TXT y DETALLES_TXT con el contenido
+        actual del arreglo en memoria (mismo enfoque que eliminarPedido()).
+*/
+bool reescribirArchivosPedidos(struct Pedido** pedidos, int cantidadPedidos) {
+    FILE *archivoPedidos = fopen(PEDIDOS_TXT, "w");
+    if (archivoPedidos == NULL) {
+        printf("Error al abrir %s.\n\n", PEDIDOS_TXT);
+        return false;
+    }
 
-// Auxiliares
+    for (int i = 0; i < cantidadPedidos; i++) {
+        struct Pedido* p = pedidos[i];
+        if (i == 0) {
+            fprintf(archivoPedidos, "%s;%s;%s;%s;%.2f;%.2f;%.2f",
+                    p->idPedido, p->cedulaCliente, p->nombreCliente, p->fecha,
+                    p->subtotalPedido, p->impuesto, p->totalPedido);
+        } else {
+            fprintf(archivoPedidos, "\n%s;%s;%s;%s;%.2f;%.2f;%.2f",
+                    p->idPedido, p->cedulaCliente, p->nombreCliente, p->fecha,
+                    p->subtotalPedido, p->impuesto, p->totalPedido);
+        }
+    }
+    fclose(archivoPedidos);
+
+    FILE *archivoDetalles = fopen(DETALLES_TXT, "w");
+    if (archivoDetalles == NULL) {
+        printf("Error al abrir %s.\n\n", DETALLES_TXT);
+        return false;
+    }
+
+    bool primero = true;
+    for (int i = 0; i < cantidadPedidos; i++) {
+        struct Pedido* p = pedidos[i];
+        for (int j = 0; j < p->cantidadDetalles; j++) {
+            struct DetallePedido* d = p->detalles[j];
+            if (primero) {
+                fprintf(archivoDetalles, "%s;%s;%s;%.2f;%d;%.2f",
+                        p->idPedido, d->codigoLibro, d->nombreLibro,
+                        d->precio, d->cantidad, d->subtotal);
+                primero = false;
+            } else {
+                fprintf(archivoDetalles, "\n%s;%s;%s;%.2f;%d;%.2f",
+                        p->idPedido, d->codigoLibro, d->nombreLibro,
+                        d->precio, d->cantidad, d->subtotal);
+            }
+        }
+    }
+    fclose(archivoDetalles);
+    return true;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                ESTADÍSTICAS                                */
+/* -------------------------------------------------------------------------- */
+
+/*
+    Nombre: buscarRegistro
+    Entrada: arreglo de Registro, cantidad, clave, descripcionOpcional (puede ser NULL)
+    Salida: índice del registro que coincide o -1
+    Objetivo:
+        Ubicar un registro por clave y, opcionalmente, por descripción.
+*/
 static int buscarRegistro(Registro* arr, int n, const char* clave, const char* descripcionOpcional) {
     for (int i = 0; i < n; i++) {
         if (compararString(arr[i].clave, (char*)clave)) {
@@ -783,7 +1109,13 @@ static int buscarRegistro(Registro* arr, int n, const char* clave, const char* d
     return -1;
 }
 
-// Toma los últimos 4 caracteres de la fecha como año
+/*
+    Nombre: anioDeFecha
+    Entrada: fecha (string), buffer anio (char[5])
+    Salida: escribe el año en 'anio'
+    Objetivo:
+        Tomar los últimos 4 caracteres de la fecha como año.
+*/
 static void anioDeFecha(const char* fecha, char* anio) {
     int len = (int)strlen(fecha);
     if (len >= 4) {
@@ -797,6 +1129,13 @@ static void anioDeFecha(const char* fecha, char* anio) {
     }
 }
 
+/*
+    Nombre: mesAnioDeFecha
+    Entrada: fecha (string), buffer out (char[8])
+    Salida: escribe "MM/YYYY" en 'out'
+    Objetivo:
+        Extraer mes y año de una fecha esperada como dd/mm/aaaa.
+*/
 static void mesAnioDeFecha(const char* fecha, char* out) {
     if (!fecha || (int)strlen(fecha) < 10) {
         copiarString(out, "??" "/????");      
@@ -812,6 +1151,13 @@ static void mesAnioDeFecha(const char* fecha, char* out) {
     out[7] = '\0';
 }
 
+/*
+    Nombre: ordenarPorCantidadDesc
+    Entrada: arreglo de Registro, cantidad
+    Salida: void
+    Objetivo:
+        Ordenar el arreglo de mayor a menor por el campo 'cantidad'.
+*/
 static void ordenarPorCantidadDesc(Registro* arr, int n) {
     for (int i = 0; i < n - 1; i++) {
         for (int j = 0; j < n - i - 1; j++) {
@@ -824,7 +1170,13 @@ static void ordenarPorCantidadDesc(Registro* arr, int n) {
     }
 }
 
-// Total de ventas y su monto por anio
+/*
+    Nombre: mostrarTotalVentasPorAnio
+    Entrada: arreglo de pedidos, cantidad de pedidos
+    Salida: void
+    Objetivo:
+        Imprimir cantidad y monto total de pedidos, y el desglose por año.
+*/
 void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
     double montoTotal = 0.0;
     Registro* porAnio = NULL;
@@ -840,7 +1192,7 @@ void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
         if (pos == -1) {
             porAnio = (Registro*)realloc(porAnio, (cantAnios + 1) * sizeof(Registro));
             porAnio[cantAnios].clave = asignarString(anio);
-            porAnio[cantAnios].descripcion[0] = '\0';
+            porAnio[cantAnios].descripcion = asignarString(""); 
             porAnio[cantAnios].cantidad = 1;
             porAnio[cantAnios].montoTotal = pedidos[i]->totalPedido;
             cantAnios++;
@@ -848,6 +1200,7 @@ void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
             porAnio[pos].cantidad += 1;
             porAnio[pos].montoTotal += pedidos[i]->totalPedido;
         }
+        free(anio);
     }
 
     printf("=== TOTAL DE VENTAS ===\n");
@@ -863,10 +1216,20 @@ void mostrarTotalVentasPorAnio(struct Pedido** pedidos, int cantPedidos) {
     }
     printf("\n");
 
+    for (int i = 0; i < cantAnios; i++) {
+        free(porAnio[i].clave);
+        if (porAnio[i].descripcion) free(porAnio[i].descripcion);
+    }
     free(porAnio);
 }
 
-// Clientes con mas pedidos
+/*
+    Nombre: mostrarClientesConMasPedidos
+    Entrada: arreglo de pedidos, cantidad, topN
+    Salida: void
+    Objetivo:
+        Mostrar el Top-N de clientes por cantidad de pedidos y monto acumulado.
+*/
 void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int topN) {
     Registro* porCliente = NULL;
     int cantClientes = 0;
@@ -901,10 +1264,20 @@ void mostrarClientesConMasPedidos(struct Pedido** pedidos, int cantPedidos, int 
     }
     printf("\n");
 
+    for (int i = 0; i < cantClientes; i++) {
+        free(porCliente[i].clave);
+        if (porCliente[i].descripcion) free(porCliente[i].descripcion);
+    }
     free(porCliente);
 }
 
-//Libros mas vendidos
+/*
+    Nombre: mostrarLibrosMasVendidos
+    Entrada: arreglo de pedidos, cantidad, filtro de año (puede NULL o ""), topN
+    Salida: void
+    Objetivo:
+        Contar unidades por código de libro (y año opcional) y mostrar Top-N.
+*/
 void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const char* anio, int topN) {
     int usarFiltro = (anio != NULL && anio[0] != '\0');
 
@@ -915,7 +1288,10 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
         if (usarFiltro) {
             char* a = malloc(5 * sizeof(char));
             anioDeFecha(pedidos[i]->fecha, a);
-            if (!compararString(a, (char*)anio)) continue;
+            if (!compararString(a, (char*)anio)) {
+                free(a); continue;
+            }
+            free(a);
         }
 
         for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
@@ -951,9 +1327,20 @@ void mostrarLibrosMasVendidos(struct Pedido** pedidos, int cantPedidos, const ch
     }
     printf("\n");
 
+    for (int i = 0; i < cantLibros; i++) {
+        free(porLibro[i].clave);
+        if (porLibro[i].descripcion) free(porLibro[i].descripcion);
+    }
     free(porLibro);
 }
 
+/*
+    Nombre: mostrarVentasPorMesAnio
+    Entrada: arreglo de pedidos, cantidad
+    Salida: void
+    Objetivo:
+        Mostrar cantidad de pedidos y monto total agrupado por "MM/YYYY".
+*/
 void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos) {
     Registro* porMesAnio = NULL;
     int totalMeses = 0;
@@ -966,7 +1353,7 @@ void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos) {
         if (ind == -1) {
             porMesAnio = (Registro*)realloc(porMesAnio, (totalMeses + 1) * sizeof(Registro));
             porMesAnio[totalMeses].clave = asignarString(mesAnio);
-            porMesAnio[totalMeses].descripcion[0] = '\0';
+            porMesAnio[totalMeses].descripcion = asignarString("");
             porMesAnio[totalMeses].cantidad = 1;                    
             porMesAnio[totalMeses].montoTotal = pedidos[i]->totalPedido; 
             totalMeses++;
@@ -974,6 +1361,7 @@ void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos) {
             porMesAnio[ind].cantidad += 1;
             porMesAnio[ind].montoTotal += pedidos[i]->totalPedido;
         }
+        free(mesAnio);
     }
 
     printf("=== TOTAL DE VENTAS POR MES-ANIO ===\n");
@@ -985,9 +1373,22 @@ void mostrarVentasPorMesAnio(struct Pedido** pedidos, int cantPedidos) {
     }
     printf("\n");
 
+    for (int i = 0; i < totalMeses; i++) {
+        free(porMesAnio[i].clave);
+        if (porMesAnio[i].descripcion) free(porMesAnio[i].descripcion);
+    }
     free(porMesAnio);
+
 }
 
+/*
+    Nombre: mostrarAutorTopPorAnio
+    Entrada: arreglo de pedidos, cantidad
+    Salida: void
+    Objetivo:
+        Determinar por cada año el autor con mayor monto vendido (y mostrar sus
+        unidades y monto).
+*/
 void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
     int cantLibros = 0;
     struct Libro** libros = cargarLibros(&cantLibros);
@@ -1029,6 +1430,7 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
                 porAutorAnio[ind].montoTotal += d->subtotal;
             }
         }
+        free(anio);
     }
 
     Registro* anios = NULL;
@@ -1037,7 +1439,10 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
         int ind = buscarRegistro(anios, cantAnios, porAutorAnio[i].clave, NULL);
         if (ind == -1) {
             anios = (Registro*)realloc(anios, (cantAnios + 1) * sizeof(Registro));
-            strcpy(anios[cantAnios].clave, porAutorAnio[i].clave);
+            anios[cantAnios].clave = asignarString(porAutorAnio[i].clave);  
+            anios[cantAnios].descripcion = asignarString("");               
+            anios[cantAnios].cantidad = 0;
+            anios[cantAnios].montoTotal = 0.0;
             cantAnios++;
         }
     }
@@ -1058,7 +1463,7 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
                 if (porAutorAnio[i].montoTotal > mejorMonto) {
                     mejorMonto = porAutorAnio[i].montoTotal;
                     mejorUnidades = porAutorAnio[i].cantidad;
-                    strcpy(mejorAutor, porAutorAnio[i].descripcion);
+                    copiarString(mejorAutor, porAutorAnio[i].descripcion);
                 }
             }
         }
@@ -1067,11 +1472,28 @@ void mostrarAutorTopPorAnio(struct Pedido** pedidos, int cantPedidos) {
             printf("%-8s %-25s %-10d $%-11.2f\n",
                    anio, mejorAutor, mejorUnidades, mejorMonto);
         }
+        free(mejorAutor);
     }
     printf("\n");
 
+    for (int i = 0; i < cantAnios; i++) {
+        free(anios[i].clave);
+        if (anios[i].descripcion) free(anios[i].descripcion);
+    }
     free(anios);
+
+    for (int i = 0; i < totalReg; i++) {
+        free(porAutorAnio[i].clave);
+        if (porAutorAnio[i].descripcion) free(porAutorAnio[i].descripcion);
+    }
     free(porAutorAnio);
+
+    for (int i = 0; i < cantLibros; i++) {
+        free(libros[i]->codigo);
+        free(libros[i]->nombre);
+        free(libros[i]->autor);
+        free(libros[i]);
+    }
+    free(libros);
+
 }
-
-

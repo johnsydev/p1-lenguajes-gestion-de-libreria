@@ -1,9 +1,9 @@
 {
-    "nombreLocal": "Librería La Alegría",
+    "nombreLocal": "Libreria La Alegria",
     "telefono": "2234-5678",
     "cedulaJuridica": "3-101-123456",
     "horarioAtencion": "Lunes a Viernes: 8:00 AM - 6:00 PM, Sábados: 8:00 AM - 4:00 PM",
-    "secuencialPedido": 1000,
+    "secuencialPedido": 1004,
     "usuarioAdmin": "admin",
     "contrasenaAdmin": "admin123"
 }
