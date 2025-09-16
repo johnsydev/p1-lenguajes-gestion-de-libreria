@@ -60,12 +60,22 @@ void menuRegistrarLibro() {
     nuevoLibro->precio = precio;
     nuevoLibro->cantidad = cantidad;
 
-    if (registrarLibro(libros, nuevoLibro, cant)) {
-        printf("Libro agregado correctamente.\n\n");
+    bool ok = registrarLibro(libros, nuevoLibro, cant);
+    if (ok) {
+        printf("Libro registrado correctamente.\n\n");
+    } else {
+        free(nuevoLibro->codigo);
+        free(nuevoLibro->nombre);
+        free(nuevoLibro->autor);
+        free(nuevoLibro);
     }
+
+    
     free(codigo);
     free(nombre);
     free(autor);
+
+// liberar la lista cargada de libros (si cargarLibros devolvió algo)
     if (libros) {
         for (int i = 0; i < cant; i++) {
             free(libros[i]->codigo);
@@ -75,10 +85,6 @@ void menuRegistrarLibro() {
         }
         free(libros);
     }
-    free(nuevoLibro->codigo);
-    free(nuevoLibro->nombre);
-    free(nuevoLibro->autor);
-    free(nuevoLibro);
 }
 
 /*
