@@ -398,11 +398,17 @@ bool registrarLibro(struct Libro** listaLibros, struct Libro* libro, int cantida
 */
 void actualizarTodosLibros(struct Libro** libros, int* cantidadLibros) {
     FILE *limpiar = fopen("libros.txt", "w");
-    if (!limpiar) { perror("fopen libros.txt (truncate)"); return; }
+    if (!limpiar) { 
+        perror("fopen libros.txt (truncate)"); 
+        return; 
+    }
     fclose(limpiar);
 
     FILE *archivo = fopen("libros.txt", "a");
-    if (!archivo) { perror("fopen libros.txt (append after truncate)"); return; }
+    if (!archivo) { 
+        perror("fopen libros.txt (append after truncate)"); 
+        return; 
+    }
 
     for (int i = 0; i < *cantidadLibros; i++)
     {
@@ -482,7 +488,9 @@ bool tienePedidosLibro(struct Pedido** pedidos, int cantPedidos, const char* cod
 */
 static int buscarIndiceLibro(struct Libro** libros, int cantLibros, const char* codigo) {
     for (int i = 0; i < cantLibros; i++) {
-        if (compararString(libros[i]->codigo, (char*)codigo)) return i;
+        if (compararString(libros[i]->codigo, (char*)codigo)) {
+            return i;
+        }
     }
     return -1;
 }
@@ -527,13 +535,14 @@ bool eliminarLibro(struct Libro*** libros, int* cantLibros,
 
     if (*cantLibros > 0) {
         void* nuevo = realloc(*libros, (*cantLibros) * sizeof(struct Libro*));
-        if (nuevo != NULL) *libros = (struct Libro**)nuevo;  // si falla, mantenemos puntero viejo (ya compactado)
-    } else {
-        free(*libros);
-        *libros = NULL;
-    }
-
-    actualizarTodosLibros(*libros, cantLibros);  // OK con 0 items
+        if (nuevo != NULL) {
+            *libros = (struct Libro**)nuevo;  // si falla, mantenemos puntero viejo (ya compactado)
+        } else {
+            free(*libros);
+            *libros = NULL;
+        }
+    } 
+    actualizarTodosLibros(*libros, cantLibros);  
     printf("Libro eliminado correctamente.\n\n");
     return true;
 }

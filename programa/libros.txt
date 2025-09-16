@@ -1,4 +1,4 @@
-A2;Libro2;Autor2;150.00;10
+A2;Libro2;Autor2;150.00;2
 A3;Libro3;Autor3;200.00;75
 C1;Test;AAA;3455.00;143
 D2;Paz;Julio C;2000.00;20

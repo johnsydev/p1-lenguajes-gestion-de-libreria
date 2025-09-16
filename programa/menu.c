@@ -234,22 +234,49 @@ void menuCrearPedido(struct Configuracion* config) {
         printf("\n");
         
         switch (opcion) {
-            case 1:
-                printf("Codigo del libro: ");
-                input(codigo, 20);
-                printf("Cantidad: ");
-                scanf("%d", &cantidad);
+            case 1: {
                 
+                char* filtroAutor = malloc(60 * sizeof(char));
+                { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+                printf("Filtrar por autor (ENTER para todos): ");
+                input(filtroAutor, 60);
+
+                printf("\n--- Catalogo disponible ---\n");
+                printf("%-6s %-25s %-20s %-8s\n", "No.", "Codigo", "Nombre", "Precio");
+                printf("-------------------------------------------------------------\n");
+                for (int i = 0, shown = 0; i < cantLibros; i++) {
+                    if (filtroAutor[0] == '\0' || (libros[i]->autor && strstr(libros[i]->autor, filtroAutor) != NULL)) {
+                        printf("%-6d %-25s %-20s $%-7.2f\n", ++shown, libros[i]->codigo, libros[i]->nombre, libros[i]->precio);
+                    }
+                }
+                printf("\n");
+
+                printf("Ingrese el codigo del libro a agregar (o ENTER para cancelar): ");
+                input(codigo, 20);
+                if (codigo[0] == '\0') {
+                    printf("Operacion cancelada.\n\n");
+                    break;
+                }
+
+                printf("Cantidad: ");
+                if (scanf("%d", &cantidad) != 1) { 
+                    int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+                    printf("Cantidad invalida.\n\n");
+                    break;
+                }
+                { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+
                 if (cantidad <= 0) {
                     printf("La cantidad debe ser mayor a 0.\n\n");
                     break;
                 }
-                
+
                 if (agregarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, codigo, cantidad, libros, cantLibros)) {
                     printf("Linea agregada correctamente.\n\n");
                 }
                 break;
-                
+            }
+
             case 2:
                 if (pedido.cantidadDetalles == 0) {
                     printf("No hay lineas para eliminar.\n\n");
@@ -275,33 +302,39 @@ void menuCrearPedido(struct Configuracion* config) {
                 }
                 break;
                 
-            case 4:
+            case 4: 
                 if (pedido.cantidadDetalles == 0) {
                     printf("No se puede generar un pedido vacio.\n\n");
                     break;
                 }
 
                 char *cedula = malloc(TAM_CEDULA * sizeof(char));
+                char *fechaInput = malloc(TAM_FECHA * sizeof(char));
                 printf("Cedula del cliente: ");
+                { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
                 input(cedula, TAM_CEDULA);
-                
+
                 struct Cliente* cliente = buscarClientePorCedula(clientes, cantClientes, cedula);
                 if (cliente == NULL) {
                     printf("Cliente no encontrado.\n\n");
                     free(cedula);
                     break;
                 }
+
                 
+                printf("Fecha del pedido (dd/mm/yyyy): ");
+                input(fechaInput, TAM_FECHA);
+                if (strlen(fechaInput) == 0) {
+                    printf("Fecha invalida. Operacion cancelada.\n\n");
+                    free(cedula);
+                    break;
+                }
+                
+
                 // Llenar datos del pedido
                 pedido.cedulaCliente = asignarString(cliente->cedula);
                 pedido.nombreCliente = asignarString(cliente->nombre);
-                
-                // Fecha actual
-                time_t t = time(NULL);
-                struct tm *fecha = localtime(&t);
-                pedido.fecha = malloc(TAM_FECHA * sizeof(char));
-                snprintf(pedido.fecha, TAM_FECHA, "%02d/%02d/%04d", 
-                        fecha->tm_mday, fecha->tm_mon + 1, fecha->tm_year + 1900);
+                pedido.fecha = asignarString(fechaInput);
                 
                 calcularTotalesPedido(pedido.detalles, pedido.cantidadDetalles, 
                                      &pedido.subtotalPedido, &pedido.impuesto, &pedido.totalPedido);
@@ -346,7 +379,7 @@ void menuCrearPedido(struct Configuracion* config) {
 
                 free(cedula);
                 break;
-                
+
             case 5:
                 printf("Saliendo sin guardar...\n\n");
                 break;
@@ -489,11 +522,11 @@ void menuModificarPedido(struct Configuracion* config) {
     }
     printf("\n");
 
-    char id[30];
+    char* id = malloc(30 * sizeof(char));
     { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
     printf("Identificador del pedido a modificar: ");
     input(id, 30);
-    if (id[0] == '\0') { printf("ID vacio.\n\n"); return; }
+    if (id[0] == '\0') { printf("ID vacio.\n\n"); free(id); return; }
 
     int indicePedido = -1;
     for (int i = 0; i < cantPedidos; i++) {
@@ -501,6 +534,7 @@ void menuModificarPedido(struct Configuracion* config) {
     }
     if (indicePedido < 0) {
         printf("Pedido no encontrado.\n\n");
+        free(id);
         return;
     }
     struct Pedido* ped = pedidos[indicePedido];
@@ -547,7 +581,7 @@ void menuModificarPedido(struct Configuracion* config) {
             }
         }
         else if (op == 2) {
-            char codigo[20];
+            char* codigo = malloc(20 * sizeof(char));
             int cant;
             printf("Codigo del libro: ");
             input(codigo, 20);

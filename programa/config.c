@@ -41,7 +41,7 @@ static char* extraerValorJSON(const char* linea, const char* clave) {
         inicio++; 
     }
 
-    if (*inicio != '"') {return NULL;
+    if (*inicio != '"') {
         return NULL;
     }
     inicio++;
