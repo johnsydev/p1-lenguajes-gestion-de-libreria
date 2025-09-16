@@ -580,6 +580,13 @@ void menuModificarPedido(struct Configuracion* config) {
             printf("Nueva cantidad: ");
             scanf("%d", &nueva);
             { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+            if (nueva>d->cantidad) {
+                struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, d->codigoLibro);
+                if (lib == NULL || lib->cantidad < (nueva - d->cantidad)) {
+                    printf("No hay suficiente stock para aumentar a esa cantidad.\n");
+                    continue;
+                }
+            }
             if (nueva > 0) {
                 d->cantidad = nueva;
                 d->subtotal = d->cantidad * d->precio;
