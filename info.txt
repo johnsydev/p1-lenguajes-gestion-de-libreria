@@ -1,0 +1,24 @@
+1. Nombre del curso: 
+	- Lenguajes de Programación
+
+2. Número de semestre y año lectivo
+	- II Semestre, 2025
+
+3. Nombre de los Estudiante
+	- Johnsy Steven López Aguilar
+	- David Calvo García
+	- Erin Camacho González
+
+d. Número de carnet de los estudiantes
+	- 2024178835
+	- 2024122451
+	- 2024073710
+
+e. Número de proyecto programado
+	- Proyecto Programado #1
+
+f. Fecha de entrega
+	- Martes 16 de septiembre del 2025
+
+g. Estatus de la entrega (debe ser CONGRUENTE con la solución entregada):
+	- Muy buena 

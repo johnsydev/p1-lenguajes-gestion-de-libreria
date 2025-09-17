@@ -1,1 +1,2 @@
-E4;Bing;RK;5000.00;2
+E4;Bing;RK;5000.00;23
+DL1;Busca Tesoros;Pepe;10000.00;10

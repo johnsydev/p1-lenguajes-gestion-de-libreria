@@ -84,6 +84,14 @@ int validarTelefono(char* telefono) {
     return 1;
 }
 
+/*
+    Nombre: validarFecha
+    Entrada: string fecha
+    Salida: 1 si es valida (dd/mm/aaaa), 0 si no
+    Objetivo:
+        Validar formato básico de una fecha.
+*/
+
 int validarFecha(char *fecha) {
     if (strlen(fecha) != 10) return 0;
     if (fecha[2] != '/' || fecha[5] != '/') return 0;
