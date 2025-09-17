@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <time.h>
 
@@ -79,6 +80,16 @@ int validarTelefono(char* telefono) {
         if (telefono[i] < '0' || telefono[i] > '9') {
             return 0;
         }
+    }
+    return 1;
+}
+
+int validarFecha(char *fecha) {
+    if (strlen(fecha) != 10) return 0;
+    if (fecha[2] != '/' || fecha[5] != '/') return 0;
+    for (int i = 0; i < 10; i++) {
+        if (i == 2 || i == 5) continue;
+        if (!isdigit(fecha[i])) return 0;
     }
     return 1;
 }

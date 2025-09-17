@@ -30,6 +30,7 @@ struct Cliente** cargarClientes(int*);
 struct Cliente** registrarCliente(struct Cliente**, struct Cliente*, int*);
 void actualizarTodosClientes(struct Cliente**, int*);
 int validarTelefono(char* telefono);
+int validarFecha(char* fecha);
 int existeCedula(struct Cliente**, int, char*);
 bool tienePedidosCliente(struct Pedido** pedidos, int cantPedidos, const char* cedula);
 bool eliminarCliente(struct Cliente*** clientes, int* cantClientes, struct Pedido** pedidos, int cantPedidos, const char* cedula);

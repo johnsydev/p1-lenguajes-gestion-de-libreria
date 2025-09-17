@@ -22,6 +22,21 @@
 #define input(texto, size) fflush(stdin); fgets(texto, size, stdin); texto[strcspn(texto, "\n")] = 0;
 
 /*
+    Nombre: inputInt
+    Entrada: puntero a int (int*)
+    Salida: escribe en la variable el entero leído o -1 si hubo error
+    Objetivo:
+        Leer un entero de stdin, manejar errores y limpiar el buffer.
+        Esta función evita problemas si el usuario ingresa algo que no es un número.
+*/
+void inputInt(int *opcion) {
+    if (scanf("%d", opcion) != 1) {
+        *opcion = -1;
+        while (getchar() != '\n');
+    }
+}
+
+/*
     Nombre: menuRegistrarLibro
     Entrada: ninguna
     Salida: void
@@ -41,14 +56,44 @@ void menuRegistrarLibro() {
     printf("------- Agregar Libro -------\n\n");
     printf("\nCodigo del libro:");
     input(codigo, 20);
+    if (codigo[0] == '\0') {
+        printf("Codigo no puede estar vacio.\n\n");
+        free(codigo); free(nombre); free(autor);
+        return;
+    }
+
     printf("\nNombre del libro: ");
     input(nombre, 100);
+    if (nombre[0] == '\0') {
+        printf("Nombre no puede estar vacio.\n\n");
+        free(codigo); free(nombre); free(autor);
+        return;
+    }
+
     printf("\nAutor: ");
     input(autor, 50);
-    printf("\nPrecio: ");
-    scanf("%f", &precio);
-    printf("\nCantidad disponible: ");
-    scanf("%d", &cantidad);
+    if (autor[0] == '\0') {
+        printf("Autor no puede estar vacio.\n\n");
+        free(codigo); free(nombre); free(autor);
+        return;
+    }
+    
+    do {
+        printf("\nPrecio: ");
+        if (scanf("%f", &precio) != 1 || precio <= 0) {
+            printf("Precio invalido. Debe ser un numero positivo.\n");
+            while (getchar() != '\n');
+            precio = -1;
+        }
+    } while (precio <= 0);
+
+    do {
+        printf("\nCantidad disponible: ");
+        inputInt(&cantidad);
+        if (cantidad < 0) {
+            printf("Cantidad invalida. Debe ser >= 0.\n");
+        }
+    } while (cantidad < 0);
     printf("\n\n");
 
     struct Libro* nuevoLibro = malloc(sizeof(struct Libro));
@@ -236,7 +281,7 @@ void menuCrearPedido(struct Configuracion* config) {
         printf("5. Salir sin guardar\n\n");
         
         printf("Seleccione una opcion: ");
-        scanf("%d", &opcion);
+        inputInt(&opcion);
         printf("\n");
         
         switch (opcion) {
@@ -291,7 +336,7 @@ void menuCrearPedido(struct Configuracion* config) {
                 
                 mostrarDetallePedido(pedido.detalles, pedido.cantidadDetalles);
                 printf("Numero de linea a eliminar: ");
-                scanf("%d", &numeroLinea);
+                inputInt(&numeroLinea);
                 eliminarDetallePedido(&pedido.detalles, &pedido.cantidadDetalles, numeroLinea);
                 break;
                 
@@ -330,7 +375,7 @@ void menuCrearPedido(struct Configuracion* config) {
                 
                 printf("Fecha del pedido (dd/mm/yyyy): ");
                 input(fechaInput, TAM_FECHA);
-                if (strlen(fechaInput) == 0) {
+                if (validarFecha(fechaInput) == 0) {
                     printf("Fecha invalida. Operacion cancelada.\n\n");
                     free(cedula);
                     break;
@@ -1399,7 +1444,7 @@ void menuAdministrativo(struct Configuracion* config) {
 
     int opcion;
     printf("Seleccione una opcion: ");
-    scanf("%d", &opcion);
+    inputInt(&opcion);
     printf("\n\n");
 
     switch (opcion)
@@ -1644,7 +1689,7 @@ void menuOpcionesPrincipales() {
 
     int opcion;
     printf("Seleccione una opcion: ");
-    scanf("%d", &opcion);
+    inputInt(&opcion);
     printf("\n\n");
 
     switch (opcion)
@@ -1689,7 +1734,7 @@ void menuPrincipal() {
     int opcion;
     bool auth = false;
     printf("Seleccione una opcion: ");
-    scanf("%d", &opcion);
+    inputInt(&opcion);
     printf("\n\n");
 
     switch (opcion)
