@@ -38,6 +38,7 @@ bool eliminarCliente(struct Cliente*** clientes, int* cantClientes, struct Pedid
 struct Libro* buscarLibroPorCodigo(struct Libro**, int, char*);
 struct Cliente* buscarClientePorCedula(struct Cliente**, int, char*);
 bool agregarDetallePedido(struct DetallePedido***, int*, char*, int, struct Libro**, int);
+bool agregarDetallePedidoModificacion(struct DetallePedido***, int*, char*, int, struct Libro**, int, struct DetallePedido**, int);
 bool eliminarDetallePedido(struct DetallePedido***, int*, int);
 void calcularTotalesPedido(struct DetallePedido**, int, float*, float*, float*);
 bool generarPedido(struct Pedido*, struct Libro**, int*, struct Configuracion*);

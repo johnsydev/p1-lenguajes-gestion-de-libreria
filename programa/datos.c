@@ -634,6 +634,71 @@ bool agregarDetallePedido(struct DetallePedido*** detalles, int* cantidadDetalle
 }
 
 /*
+    Nombre: agregarDetallePedidoModificacion
+    Entrada: triple puntero a detalles (puede realloc), puntero a cantidad,
+             código de libro, cantidad solicitada, arreglo de libros y su cantidad, doble púntero a detalles originales y su cantidad
+    Salida: true si agrega/actualiza, false si hay error (stock o código)
+    Objetivo:
+        Agregar un renglón al detalle del pedido o actualizar cantidad si ya existe,
+        validando stock disponible. En este caso, se considera el stock original del pedido
+        para permitir que el usuario pueda volver a agregar un libro que ya estaba en el pedido.
+*/
+bool agregarDetallePedidoModificacion(struct DetallePedido*** detalles, int* cantidadDetalles, 
+                                     char* codigoLibro, int cantidad, struct Libro** libros, 
+                                     int cantLibros, struct DetallePedido** detallesOriginales, 
+                                     int cantDetallesOriginales) {
+    struct Libro* libro = buscarLibroPorCodigo(libros, cantLibros, codigoLibro);
+    if (libro == NULL) {
+        printf("Libro no encontrado.\n\n");
+        return false;
+    }
+    
+    // Calcular stock disponible considerando el pedido original
+    int stockDisponible = libro->cantidad;
+    
+    // Sumar la cantidad original de este libro si estaba en el pedido
+    for (int i = 0; i < cantDetallesOriginales; i++) {
+        if (compararString(detallesOriginales[i]->codigoLibro, codigoLibro)) {
+            stockDisponible += detallesOriginales[i]->cantidad;
+            break;
+        }
+    }
+    
+    // Restar la cantidad actual de este libro en el pedido modificado
+    for (int i = 0; i < *cantidadDetalles; i++) {
+        if (compararString((*detalles)[i]->codigoLibro, codigoLibro)) {
+            stockDisponible -= (*detalles)[i]->cantidad;
+        }
+    }
+    
+    if (stockDisponible < cantidad) {
+        printf("Stock insuficiente. Disponible: %d\n\n", stockDisponible);
+        return false;
+    }
+
+    // Verificar si el libro ya existe en el pedido actual
+    for (int i = 0; i < *cantidadDetalles; i++) {
+        if (compararString((*detalles)[i]->codigoLibro, codigoLibro)) {
+            printf("El libro ya está en el pedido. Use 'Cambiar cantidad' en su lugar.\n\n");
+            return false;
+        }
+    }
+
+    // Agregar nuevo detalle
+    *detalles = realloc(*detalles, (*cantidadDetalles + 1) * sizeof(struct DetallePedido*));
+    (*detalles)[*cantidadDetalles] = malloc(sizeof(struct DetallePedido));
+
+    (*detalles)[*cantidadDetalles]->codigoLibro = asignarString(libro->codigo);
+    (*detalles)[*cantidadDetalles]->nombreLibro = asignarString(libro->nombre);
+    (*detalles)[*cantidadDetalles]->precio = libro->precio;
+    (*detalles)[*cantidadDetalles]->cantidad = cantidad;
+    (*detalles)[*cantidadDetalles]->subtotal = cantidad * libro->precio;
+    
+    (*cantidadDetalles)++;
+    return true;
+}
+
+/*
     Nombre: eliminarDetallePedido
     Entrada: triple puntero a detalles, puntero a cantidad de detalles, número de línea (1-based)
     Salida: true si elimina, false si índice inválido

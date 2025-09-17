@@ -508,13 +508,23 @@ void menuEliminarPedido() {
 void menuModificarPedido(struct Configuracion* config) {
     int cantPedidos = 0, cantLibros = 0;
     struct Pedido** pedidos = cargarPedidos(&cantPedidos);
-    struct Libro**  libros  = cargarLibros(&cantLibros);
+    struct Libro** libros = cargarLibros(&cantLibros);
 
     if (cantPedidos == 0) {
         printf("No hay pedidos registrados.\n\n");
         printf("Presione ENTER para volver...");
-        int ch; while ((ch = getchar()) != '\n' && ch != EOF) {}
+        { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
         getchar();
+        
+        if (libros) {
+            for (int i = 0; i < cantLibros; i++) {
+                free(libros[i]->codigo);
+                free(libros[i]->nombre);
+                free(libros[i]->autor);
+                free(libros[i]);
+            }
+            free(libros);
+        }
         return;
     }
 
@@ -532,25 +542,92 @@ void menuModificarPedido(struct Configuracion* config) {
     { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
     printf("Identificador del pedido a modificar: ");
     input(id, 30);
-    if (id[0] == '\0') { printf("ID vacio.\n\n"); free(id); return; }
+    
+    if (id[0] == '\0') { 
+        printf("ID vacio.\n\n"); 
+        free(id); 
+        
+        if (libros) {
+            for (int i = 0; i < cantLibros; i++) {
+                free(libros[i]->codigo);
+                free(libros[i]->nombre);
+                free(libros[i]->autor);
+                free(libros[i]);
+            }
+            free(libros);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
+        return; 
+    }
 
     int indicePedido = -1;
     for (int i = 0; i < cantPedidos; i++) {
-        if (compararString(pedidos[i]->idPedido, id)) { indicePedido = i; break; }
+        if (compararString(pedidos[i]->idPedido, id)) { 
+            indicePedido = i; 
+            break; 
+        }
     }
+    
     if (indicePedido < 0) {
         printf("Pedido no encontrado.\n\n");
         free(id);
+        
+        if (libros) {
+            for (int i = 0; i < cantLibros; i++) {
+                free(libros[i]->codigo);
+                free(libros[i]->nombre);
+                free(libros[i]->autor);
+                free(libros[i]);
+            }
+            free(libros);
+        }
+        if (pedidos) {
+            for (int i = 0; i < cantPedidos; i++) {
+                for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                    free(pedidos[i]->detalles[j]->codigoLibro);
+                    free(pedidos[i]->detalles[j]->nombreLibro);
+                    free(pedidos[i]->detalles[j]);
+                }
+                free(pedidos[i]->detalles);
+                free(pedidos[i]->idPedido);
+                free(pedidos[i]->cedulaCliente);
+                free(pedidos[i]->nombreCliente);
+                free(pedidos[i]->fecha);
+                free(pedidos[i]);
+            }
+            free(pedidos);
+        }
         return;
     }
+    
     struct Pedido* ped = pedidos[indicePedido];
 
+    // Guardar estado original del pedido
     int nOriginal = ped->cantidadDetalles;
-    char** codigosOriginales = malloc(nOriginal * sizeof(char*));
-    int* cantidadesOriginales = malloc(nOriginal * sizeof(int));
+    struct DetallePedido** detallesOriginales = malloc(nOriginal * sizeof(struct DetallePedido*));
+    
     for (int i = 0; i < nOriginal; i++) {
-        codigosOriginales[i] = asignarString(ped->detalles[i]->codigoLibro);
-        cantidadesOriginales[i] = ped->detalles[i]->cantidad;
+        detallesOriginales[i] = malloc(sizeof(struct DetallePedido));
+        detallesOriginales[i]->codigoLibro = asignarString(ped->detalles[i]->codigoLibro);
+        detallesOriginales[i]->nombreLibro = asignarString(ped->detalles[i]->nombreLibro);
+        detallesOriginales[i]->precio = ped->detalles[i]->precio;
+        detallesOriginales[i]->cantidad = ped->detalles[i]->cantidad;
+        detallesOriginales[i]->subtotal = ped->detalles[i]->subtotal;
     }
 
     int salir = 0;
@@ -570,27 +647,58 @@ void menuModificarPedido(struct Configuracion* config) {
         { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
 
         if (op == 1) {
+            if (ped->cantidadDetalles == 0) {
+                printf("No hay lineas para modificar.\n");
+                continue;
+            }
+            
             int num, nueva;
             printf("Numero de linea: ");
             scanf("%d", &num);
             { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
-            if (num < 1 || num > ped->cantidadDetalles) { printf("Fuera de rango.\n"); continue; }
+            
+            if (num < 1 || num > ped->cantidadDetalles) { 
+                printf("Fuera de rango.\n"); 
+                continue; 
+            }
+            
             struct DetallePedido* d = ped->detalles[num-1];
-            printf("Cantidad actual: %d\n", d->cantidad);
+            
+            // Calcular stock disponible para este libro
+            struct Libro* libro = buscarLibroPorCodigo(libros, cantLibros, d->codigoLibro);
+            if (libro == NULL) {
+                printf("Error: libro no encontrado.\n");
+                continue;
+            }
+            
+            int stockDisponible = libro->cantidad;
+            // Sumar la cantidad original de este libro
+            for (int i = 0; i < nOriginal; i++) {
+                if (compararString(detallesOriginales[i]->codigoLibro, d->codigoLibro)) {
+                    stockDisponible += detallesOriginales[i]->cantidad;
+                    break;
+                }
+            }
+            // Restar cantidades actuales de este libro en otras líneas del pedido
+            for (int i = 0; i < ped->cantidadDetalles; i++) {
+                if (i != (num-1) && compararString(ped->detalles[i]->codigoLibro, d->codigoLibro)) {
+                    stockDisponible -= ped->detalles[i]->cantidad;
+                }
+            }
+            
+            printf("Cantidad actual: %d (Stock disponible: %d)\n", d->cantidad, stockDisponible);
             printf("Nueva cantidad: ");
             scanf("%d", &nueva);
             { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
-            if (nueva>d->cantidad) {
-                struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, d->codigoLibro);
-                if (lib == NULL || lib->cantidad < (nueva - d->cantidad)) {
-                    printf("No hay suficiente stock para aumentar a esa cantidad.\n");
-                    continue;
-                }
-            }
-            if (nueva > 0) {
+            
+            if (nueva > 0 && nueva <= stockDisponible) {
                 d->cantidad = nueva;
                 d->subtotal = d->cantidad * d->precio;
                 printf("Linea actualizada.\n");
+            } else if (nueva <= 0) {
+                printf("Cantidad debe ser mayor a 0.\n");
+            } else {
+                printf("Stock insuficiente. Máximo disponible: %d\n", stockDisponible);
             }
         }
         else if (op == 2) {
@@ -598,20 +706,41 @@ void menuModificarPedido(struct Configuracion* config) {
             int cant;
             printf("Codigo del libro: ");
             input(codigo, 20);
-            printf("Cantidad: ");
-            scanf("%d", &cant);
-            { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
-            if (cant > 0) {
-                agregarDetallePedido(&ped->detalles, &ped->cantidadDetalles,
-                                     codigo, cant, libros, cantLibros);
+            
+            if (codigo[0] != '\0') {
+                printf("Cantidad: ");
+                scanf("%d", &cant);
+                { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
+                
+                if (cant > 0) {
+                    // Usar la nueva función que considera el contexto de modificación
+                    if (!agregarDetallePedidoModificacion(&ped->detalles, &ped->cantidadDetalles,
+                                                          codigo, cant, libros, cantLibros, 
+                                                          detallesOriginales, nOriginal)) {
+                        printf("No se pudo agregar la linea.\n");
+                    } else {
+                        printf("Linea agregada correctamente.\n");
+                    }
+                } else {
+                    printf("Cantidad debe ser mayor a 0.\n");
+                }
             }
+            free(codigo);
         }
         else if (op == 3) {
+            if (ped->cantidadDetalles == 0) {
+                printf("No hay lineas para eliminar.\n");
+                continue;
+            }
+            
             int num;
             printf("Numero de linea a eliminar: ");
             scanf("%d", &num);
             { int ch; while ((ch = getchar()) != '\n' && ch != EOF) {} }
-            eliminarDetallePedido(&ped->detalles, &ped->cantidadDetalles, num);
+            
+            if (!eliminarDetallePedido(&ped->detalles, &ped->cantidadDetalles, num)) {
+                printf("No se pudo eliminar la linea.\n");
+            }
         }
         else if (op == 4) {
             if (ped->cantidadDetalles == 0) {
@@ -623,19 +752,63 @@ void menuModificarPedido(struct Configuracion* config) {
             calcularTotalesPedido(ped->detalles, ped->cantidadDetalles,
                                   &ped->subtotalPedido, &ped->impuesto, &ped->totalPedido);
 
-            // Devolver inventario original
+            // Devolver inventario original al stock
             for (int i = 0; i < nOriginal; i++) {
-                struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, codigosOriginales[i]);
-                if (lib) lib->cantidad += cantidadesOriginales[i];
+                struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, detallesOriginales[i]->codigoLibro);
+                if (lib) lib->cantidad += detallesOriginales[i]->cantidad;
             }
-            // Descontar inventario actual
+            
+            // Descontar inventario actual del stock
             for (int j = 0; j < ped->cantidadDetalles; j++) {
                 struct Libro* lib = buscarLibroPorCodigo(libros, cantLibros, ped->detalles[j]->codigoLibro);
                 if (lib) lib->cantidad -= ped->detalles[j]->cantidad;
             }
 
+            // Actualizar archivos
             actualizarTodosLibros(libros, &cantLibros);
-            reescribirArchivosPedidos(pedidos, cantPedidos);
+            
+            // Reescribir archivos de pedidos
+            FILE *archivoPedidos = fopen(PEDIDOS_TXT, "w");
+            if (archivoPedidos) {
+                for (int i = 0; i < cantPedidos; i++) {
+                    if (i == 0) {
+                        fprintf(archivoPedidos, "%s;%s;%s;%s;%.2f;%.2f;%.2f", 
+                                pedidos[i]->idPedido, pedidos[i]->cedulaCliente, 
+                                pedidos[i]->nombreCliente, pedidos[i]->fecha, 
+                                pedidos[i]->subtotalPedido, pedidos[i]->impuesto, 
+                                pedidos[i]->totalPedido);
+                    } else {
+                        fprintf(archivoPedidos, "\n%s;%s;%s;%s;%.2f;%.2f;%.2f", 
+                                pedidos[i]->idPedido, pedidos[i]->cedulaCliente, 
+                                pedidos[i]->nombreCliente, pedidos[i]->fecha, 
+                                pedidos[i]->subtotalPedido, pedidos[i]->impuesto, 
+                                pedidos[i]->totalPedido);
+                    }
+                }
+                fclose(archivoPedidos);
+            }
+            
+            FILE *archivoDetalles = fopen(DETALLES_TXT, "w");
+            if (archivoDetalles) {
+                bool primero = true;
+                for (int i = 0; i < cantPedidos; i++) {
+                    for (int j = 0; j < pedidos[i]->cantidadDetalles; j++) {
+                        if (primero) {
+                            fprintf(archivoDetalles, "%s;%s;%s;%.2f;%d;%.2f",
+                                    pedidos[i]->idPedido, pedidos[i]->detalles[j]->codigoLibro, 
+                                    pedidos[i]->detalles[j]->nombreLibro, pedidos[i]->detalles[j]->precio, 
+                                    pedidos[i]->detalles[j]->cantidad, pedidos[i]->detalles[j]->subtotal);
+                            primero = false;
+                        } else {
+                            fprintf(archivoDetalles, "\n%s;%s;%s;%.2f;%d;%.2f",
+                                    pedidos[i]->idPedido, pedidos[i]->detalles[j]->codigoLibro, 
+                                    pedidos[i]->detalles[j]->nombreLibro, pedidos[i]->detalles[j]->precio, 
+                                    pedidos[i]->detalles[j]->cantidad, pedidos[i]->detalles[j]->subtotal);
+                        }
+                    }
+                }
+                fclose(archivoDetalles);
+            }
 
             printf("Pedido actualizado correctamente.\n");
             salir = 1;
@@ -644,13 +817,21 @@ void menuModificarPedido(struct Configuracion* config) {
             printf("Cancelando sin guardar...\n");
             salir = 1;
         }
+        else {
+            printf("Opcion no valida.\n");
+        }
     }
 
-    // liberar memoria 
-    for (int i = 0; i < nOriginal; i++) free(codigosOriginales[i]);
-    free(codigosOriginales);
-    free(cantidadesOriginales);
+    // Liberar memoria de respaldo
+    for (int i = 0; i < nOriginal; i++) {
+        free(detallesOriginales[i]->codigoLibro);
+        free(detallesOriginales[i]->nombreLibro);
+        free(detallesOriginales[i]);
+    }
+    free(detallesOriginales);
+    free(id);
 
+    // Liberar memoria de estructuras cargadas
     if (libros) {
         for (int i = 0; i < cantLibros; i++) {
             free(libros[i]->codigo);
