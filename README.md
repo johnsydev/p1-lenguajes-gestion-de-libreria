@@ -43,7 +43,7 @@ Este sistema permite la gestión de una librería, implementado en C, con almace
    Navega a la carpeta `programa/` y ejecuta:
 
    ```sh
-   gcc -o programa main.c menu.c datos.c auxiliares.c config.c
+   bcc32c -o programa main.c menu.c datos.c auxiliares.c config.c
    ```
 
    (Asegúrarse de incluir todos los archivos .c necesarios.)
